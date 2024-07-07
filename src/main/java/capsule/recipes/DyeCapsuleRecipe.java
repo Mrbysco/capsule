@@ -6,7 +6,6 @@ import capsule.items.CapsuleItems;
 import com.google.common.collect.Lists;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.RegistryAccess;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.inventory.CraftingContainer;
 import net.minecraft.world.item.DyeItem;
 import net.minecraft.world.item.Item;
@@ -15,6 +14,7 @@ import net.minecraft.world.item.crafting.CraftingBookCategory;
 import net.minecraft.world.item.crafting.CustomRecipe;
 import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.level.Level;
+import net.neoforged.neoforge.common.CommonHooks;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -23,8 +23,8 @@ import static capsule.items.CapsuleItem.CapsuleState.EMPTY;
 
 public class DyeCapsuleRecipe extends CustomRecipe {
 
-    public DyeCapsuleRecipe(ResourceLocation id, CraftingBookCategory category) {
-        super(id, category);
+    public DyeCapsuleRecipe(CraftingBookCategory category) {
+        super(category);
     }
 
     @Override
@@ -156,7 +156,7 @@ public class DyeCapsuleRecipe extends CustomRecipe {
 
         for (int i = 0; i < nonnulllist.size(); ++i) {
             ItemStack itemstack = inv.getItem(i);
-            nonnulllist.set(i, net.minecraftforge.common.ForgeHooks.getCraftingRemainingItem(itemstack));
+            nonnulllist.set(i, CommonHooks.getCraftingRemainingItem(itemstack));
         }
 
         return nonnulllist;

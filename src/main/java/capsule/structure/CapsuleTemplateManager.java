@@ -6,6 +6,7 @@ import com.mojang.datafixers.DataFixer;
 import net.minecraft.FileUtil;
 import net.minecraft.ResourceLocationException;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtAccounter;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.Resource;
@@ -15,7 +16,13 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import javax.annotation.Nullable;
-import java.io.*;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
@@ -116,7 +123,7 @@ public class CapsuleTemplateManager {
         if (isSchematic) {
             return readTemplateFromSchematic(inputStreamIn, location);
         }
-        CompoundTag compoundnbt = NbtIo.readCompressed(inputStreamIn);
+        CompoundTag compoundnbt = NbtIo.readCompressed(inputStreamIn, NbtAccounter.unlimitedHeap());
         return this.readFromNBT(compoundnbt, location);
     }
 
@@ -180,7 +187,7 @@ public class CapsuleTemplateManager {
     }
 
     public CapsuleTemplate readTemplateFromSchematic(InputStream inputstream, String location) throws Exception {
-            CompoundTag schematicNBT = NbtIo.readCompressed(inputstream);
+            CompoundTag schematicNBT = NbtIo.readCompressed(inputstream, NbtAccounter.unlimitedHeap());
             CapsuleTemplate template = new CapsuleTemplate();
             // first raw conversion
             template.readSchematic(schematicNBT);

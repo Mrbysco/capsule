@@ -10,17 +10,18 @@ import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.CraftingRecipe;
-import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.registries.DeferredRegister;
-import net.minecraftforge.registries.RegistryObject;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.neoforge.registries.DeferredRegister;
 import org.apache.commons.lang3.tuple.Pair;
+
+import java.util.function.Supplier;
 
 import static capsule.items.CapsuleItem.CapsuleState.LINKED;
 
 public class CapsuleCreativeTabs {
     public static final DeferredRegister<CreativeModeTab> CREATIVE_MODE_TABS = DeferredRegister.create(Registries.CREATIVE_MODE_TAB, CapsuleMod.MODID);
 
-    public static final RegistryObject<CreativeModeTab> CAPSULE_TAB = CREATIVE_MODE_TABS.register("tab", () -> CreativeModeTab.builder()
+    public static final Supplier<CreativeModeTab> CAPSULE_TAB = CREATIVE_MODE_TABS.register("tab", () -> CreativeModeTab.builder()
             .icon(() -> {
                 ItemStack stack = new ItemStack(CapsuleItems.CAPSULE.get(), 1);
                 CapsuleItem.setState(stack, LINKED);

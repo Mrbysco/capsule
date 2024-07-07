@@ -15,7 +15,7 @@ public class BlockCaptureCrasher extends Block {
     }
 
     @Override
-    public void playerWillDestroy(Level worldIn, BlockPos pos, BlockState state, Player player) {
+    public BlockState playerWillDestroy(Level worldIn, BlockPos pos, BlockState state, Player player) {
         super.playerWillDestroy(worldIn, pos, state, player);
         throw new RuntimeException("testing purpose");
     }

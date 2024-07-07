@@ -1,94 +1,28 @@
 package capsule.network;
 
-import capsule.StructureSaver;
-import capsule.helpers.Spacial;
-import capsule.items.CapsuleItem;
-import capsule.structure.CapsuleTemplate;
-import capsule.structure.CapsuleTemplateManager;
+import capsule.CapsuleMod;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.network.chat.Component;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.phys.AABB;
-import net.minecraftforge.network.NetworkEvent;
-import org.apache.commons.lang3.tuple.Pair;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
 
-import java.util.List;
-import java.util.function.Supplier;
+public record CapsuleContentPreviewQueryToServer(String structureName) implements CustomPacketPayload {
+	public static final ResourceLocation ID = new ResourceLocation(CapsuleMod.MODID, "content_preview_query");
 
-public class CapsuleContentPreviewQueryToServer {
+	public CapsuleContentPreviewQueryToServer(FriendlyByteBuf buf) {
+		this(buf.readUtf());
+	}
 
-    protected static final Logger LOGGER = LogManager.getLogger(CapsuleContentPreviewQueryToServer.class);
+	public void write(FriendlyByteBuf buf) {
+		buf.writeUtf(structureName);
+	}
 
-    private String structureName = null;
+	@Override
+	public ResourceLocation id() {
+		return ID;
+	}
 
-    public CapsuleContentPreviewQueryToServer(String structureName) {
-        this.setStructureName(structureName);
-    }
-
-    public CapsuleContentPreviewQueryToServer(FriendlyByteBuf buf) {
-        try {
-            this.setStructureName(buf.readUtf(32767));
-
-        } catch (IndexOutOfBoundsException ioe) {
-            LOGGER.error("Exception while reading AskCapsuleContentPreviewMessageToServer: " + ioe);
-        }
-    }
-
-    public void toBytes(FriendlyByteBuf buf) {
-        if (buf == null) return;
-        String name = this.getStructureName();
-        if (name == null) name = "";
-        buf.writeUtf(name);
-    }
-
-    public void onServer(Supplier<NetworkEvent.Context> ctx) {
-        final ServerPlayer sendingPlayer = ctx.get().getSender();
-        if (sendingPlayer == null) {
-            LOGGER.error("ServerPlayerEntity was null when AskCapsuleContentPreviewMessageToServer was received");
-            return;
-        }
-
-        ctx.get().enqueueWork(() -> {
-            // read the content of the template and send it back to the client
-            ItemStack heldItem = sendingPlayer.getMainHandItem();
-            if (!(heldItem.getItem() instanceof CapsuleItem) || CapsuleItem.getStructureName(heldItem) == null) {
-                return;
-            }
-
-            ServerLevel serverworld = sendingPlayer.serverLevel();
-            Pair<CapsuleTemplateManager, CapsuleTemplate> templatepair = StructureSaver.getTemplate(heldItem, serverworld);
-            CapsuleTemplate template = templatepair.getRight();
-
-            if (template != null) {
-                ctx.get().enqueueWork(() -> {
-                    List<AABB> blockspos = Spacial.mergeVoxels(template.getPalette());
-                    CapsuleNetwork.wrapper.reply(new CapsuleContentPreviewAnswerToClient(blockspos, this.getStructureName()), ctx.get());
-                });
-                CapsuleNetwork.wrapper.reply(new CapsuleFullContentAnswerToClient(template, this.getStructureName()), ctx.get());
-            } else if (heldItem.hasTag()) {
-                //noinspection ConstantConditions
-                String structureName = heldItem.getTag().getString("structureName");
-                sendingPlayer.sendSystemMessage(Component.translatable("capsule.error.templateNotFound", structureName));
-            }
-        });
-        ctx.get().setPacketHandled(true);
-    }
-
-    @Override
-    public String toString() {
-        return getClass().toString();
-    }
-
-    public String getStructureName() {
-        return structureName;
-    }
-
-    public void setStructureName(String structureName) {
-        this.structureName = structureName;
-    }
-
+	@Override
+	public String toString() {
+		return getClass().toString();
+	}
 }

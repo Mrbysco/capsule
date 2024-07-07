@@ -48,15 +48,16 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.common.capabilities.ForgeCapabilities;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.event.entity.living.LivingEquipmentChangeEvent;
-import net.minecraftforge.event.entity.player.PlayerInteractEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.items.IItemHandler;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.neoforge.capabilities.Capabilities;
+import net.neoforged.neoforge.event.TickEvent;
+import net.neoforged.neoforge.event.entity.living.LivingEquipmentChangeEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
+import net.neoforged.neoforge.items.IItemHandler;
+import net.neoforged.neoforge.network.PacketDistributor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -510,7 +511,7 @@ public class CapsuleItem extends Item {
     public static void onLeftClick(PlayerInteractEvent.LeftClickEmpty event) {
         ItemStack stack = event.getEntity().getMainHandItem();
         if (event.getLevel().isClientSide && stack.getItem() instanceof CapsuleItem && (CapsuleItem.isBlueprint(stack) || CapsuleItem.canRotate(stack) && !CapsuleItem.hasState(stack, EMPTY))) {
-            CapsuleNetwork.wrapper.sendToServer(new CapsuleLeftClickQueryToServer());
+            PacketDistributor.SERVER.noArg().send(new CapsuleLeftClickQueryToServer());
             askPreviewIfNeeded(stack);
         }
     }
@@ -526,7 +527,7 @@ public class CapsuleItem extends Item {
                         if (lastRotationTime + 60 < Util.getMillis()) {
                             lastRotationTime = Util.getMillis();
                             // prevent action to be triggered on server + on client
-                            CapsuleNetwork.wrapper.sendToServer(new CapsuleLeftClickQueryToServer());
+                            PacketDistributor.SERVER.noArg().send(new CapsuleLeftClickQueryToServer());
                             askPreviewIfNeeded(stack);
                         }
                     } else if (!CapsuleItem.hasState(stack, CapsuleState.DEPLOYED)) {
@@ -550,7 +551,7 @@ public class CapsuleItem extends Item {
         if (!capsule.client.CapsulePreviewHandler.currentPreview.containsKey(getStructureName(stack))) {
             if (Minecraft.getInstance().getConnection() != null)
                 // try to get the preview from server
-                CapsuleNetwork.wrapper.sendToServer(new CapsuleContentPreviewQueryToServer(getStructureName(stack)));
+                PacketDistributor.SERVER.noArg().send(new CapsuleContentPreviewQueryToServer(getStructureName(stack)));
         }
     }
 
@@ -566,8 +567,8 @@ public class CapsuleItem extends Item {
 
         ItemStack capsule = player.getItemInHand(hand);
         if (player.isShiftKeyDown() && isBlueprint(capsule)) {
-            BlockEntity te = world.getBlockEntity(pos);
-            if (te != null && te.getCapability(ForgeCapabilities.ITEM_HANDLER, null).isPresent()) {
+            BlockEntity be = world.getBlockEntity(pos);
+            if (be != null && world.getCapability(Capabilities.ItemHandler.BLOCK, pos, null) != null) {
                 if (hasSourceInventory(capsule) && pos.equals(getSourceInventoryLocation(capsule)) && getSourceInventoryDimension(capsule).equals(world.dimension())) {
                     // remove if it was the same
                     saveSourceInventory(capsule, null, null);
@@ -608,7 +609,7 @@ public class CapsuleItem extends Item {
                 BlockHitResult rtr = hasStructureLink(capsule) ? Spacial.clientRayTracePreview(playerIn, 0, getSize(capsule)) : null;
                 BlockPos dest = rtr != null && rtr.getType() == HitResult.Type.BLOCK ? rtr.getBlockPos().offset(rtr.getDirection().getNormal()).offset(0, CapsuleItem.getYOffset(capsule), 0) : null;
                 if (dest != null) {
-                    CapsuleNetwork.wrapper.sendToServer(new CapsuleContentPreviewQueryToServer(capsule.getTag().getString("structureName")));
+                    PacketDistributor.SERVER.noArg().send(new CapsuleContentPreviewQueryToServer(capsule.getTag().getString("structureName")));
                 }
             }
 
@@ -625,12 +626,12 @@ public class CapsuleItem extends Item {
                     dest = dest.offset(0, CapsuleItem.getYOffset(capsule), 0);
                 }
                 if (dest != null) {
-                    CapsuleNetwork.wrapper.sendToServer(new CapsuleThrowQueryToServer(dest, true));
+                    PacketDistributor.SERVER.noArg().send(new CapsuleThrowQueryToServer(dest, true));
                 }
             } else if (isActivated(capsule)) {
                 BlockHitResult rtr = hasStructureLink(capsule) ? Spacial.clientRayTracePreview(playerIn, 0, getSize(capsule)) : null;
                 BlockPos dest = rtr != null && rtr.getType() == HitResult.Type.BLOCK ? rtr.getBlockPos().offset(rtr.getDirection().getNormal()).offset(0, CapsuleItem.getYOffset(capsule), 0) : null;
-                CapsuleNetwork.wrapper.sendToServer(new CapsuleThrowQueryToServer(dest, false));
+                PacketDistributor.SERVER.noArg().send(new CapsuleThrowQueryToServer(dest, false));
             }
         }
 
@@ -880,7 +881,7 @@ public class CapsuleItem extends Item {
 
         BlockEntity te = inventoryWorld.getBlockEntity(location);
         if (te != null) {
-            return te.getCapability(ForgeCapabilities.ITEM_HANDLER, null).orElse(null);
+            return inventoryWorld.getCapability(Capabilities.ItemHandler.BLOCK, location, null);
         }
         return null;
     }

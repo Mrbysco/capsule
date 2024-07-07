@@ -5,31 +5,32 @@ import capsule.helpers.Files;
 import capsule.helpers.Serialization;
 import com.electronwill.nightconfig.core.CommentedConfig;
 import com.google.gson.JsonObject;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.storage.loot.BuiltInLootTables;
-import net.minecraftforge.common.ForgeConfigSpec;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.common.Mod.EventBusSubscriber.Bus;
-import net.minecraftforge.fml.config.ModConfig;
-import net.minecraftforge.fml.loading.FMLPaths;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.neoforged.fml.config.ModConfig;
+import net.neoforged.fml.loading.FMLPaths;
+import net.neoforged.neoforge.common.ModConfigSpec;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.logging.log4j.LogManager;
 
 import java.nio.file.Path;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
-@Mod.EventBusSubscriber(modid = CapsuleMod.MODID, bus = Bus.MOD)
 public class Config {
 
     protected static final org.apache.logging.log4j.Logger LOGGER = LogManager.getLogger(Config.class);
 
-    private static final ForgeConfigSpec.Builder COMMON_BUILDER = new ForgeConfigSpec.Builder();
-    public static ForgeConfigSpec COMMON_CONFIG;
+    private static final ModConfigSpec.Builder COMMON_BUILDER = new ModConfigSpec.Builder();
+    public static ModConfigSpec COMMON_CONFIG;
 
     public static final String CATEGORY_BALANCE = "balance";
     public static final String CATEGORY_LOOT = "loot";
@@ -80,22 +81,22 @@ public class Config {
     public static boolean allowMirror;
     public static int previewDisplayDuration;
 
-    public static ForgeConfigSpec.ConfigValue<String> enchantRarity;
-    public static ForgeConfigSpec.ConfigValue<String> recallEnchantType;
+    public static ModConfigSpec.ConfigValue<String> enchantRarity;
+    public static ModConfigSpec.ConfigValue<String> recallEnchantType;
 
     // provided by spec
-    private static ForgeConfigSpec.ConfigValue<List<? extends String>> excludedBlocksIdsCfg;
-    private static ForgeConfigSpec.ConfigValue<List<? extends String>> opExcludedBlocksIdsCfg;
-    private static ForgeConfigSpec.ConfigValue<List<CommentedConfig>> lootTemplatesPathsCfg;
-    private static ForgeConfigSpec.ConfigValue<List<? extends String>> lootTablesListCfg;
-    private static ForgeConfigSpec.ConfigValue<String> starterTemplatesPathCfg;
-    private static ForgeConfigSpec.ConfigValue<String> prefabsTemplatesPathCfg;
-    private static ForgeConfigSpec.ConfigValue<String> rewardTemplatesPathCfg;
-    private static ForgeConfigSpec.IntValue upgradeLimitCfg;
-    private static ForgeConfigSpec.BooleanValue allowBlueprintRewardCfg;
-    private static ForgeConfigSpec.BooleanValue allowMirrorCfg;
-    private static ForgeConfigSpec.ConfigValue<String> starterModeCfg;
-    private static ForgeConfigSpec.IntValue previewDisplayDurationCfg;
+    private static ModConfigSpec.ConfigValue<List<? extends String>> excludedBlocksIdsCfg;
+    private static ModConfigSpec.ConfigValue<List<? extends String>> opExcludedBlocksIdsCfg;
+    private static ModConfigSpec.ConfigValue<List<CommentedConfig>> lootTemplatesPathsCfg;
+    private static ModConfigSpec.ConfigValue<List<? extends String>> lootTablesListCfg;
+    private static ModConfigSpec.ConfigValue<String> starterTemplatesPathCfg;
+    private static ModConfigSpec.ConfigValue<String> prefabsTemplatesPathCfg;
+    private static ModConfigSpec.ConfigValue<String> rewardTemplatesPathCfg;
+    private static ModConfigSpec.IntValue upgradeLimitCfg;
+    private static ModConfigSpec.BooleanValue allowBlueprintRewardCfg;
+    private static ModConfigSpec.BooleanValue allowMirrorCfg;
+    private static ModConfigSpec.ConfigValue<String> starterModeCfg;
+    private static ModConfigSpec.IntValue previewDisplayDurationCfg;
 
 
     public static Path getCapsuleConfigDir() {
@@ -137,7 +138,7 @@ public class Config {
         Config.prefabsTemplatesList = Files.populatePrefabs(Config.getCapsuleConfigDir().toFile(), Config.prefabsTemplatesPath, ressourceManager);
     }
 
-    public static void configureCapture(ForgeConfigSpec.Builder configBuild) {
+    public static void configureCapture(ModConfigSpec.Builder configBuild) {
 
         previewDisplayDurationCfg = configBuild.comment("Duration in ticks for an undeployed capsule to remain activated (preview displayed) when right clicking. 20 ticks = 1 second.\nDefault value: 120.")
                 .defineInRange("previewDisplayDuration", 120, 0, Integer.MAX_VALUE);
@@ -176,7 +177,7 @@ public class Config {
                 .defineList("opExcludedBlocks", Arrays.asList(excludedBlocksOPArray), item -> item instanceof String);
     }
 
-    public static void configureLoot(ForgeConfigSpec.Builder configBuild) {
+    public static void configureLoot(ModConfigSpec.Builder configBuild) {
 
         // Loot tables that can reward a capsule
         List<String> defaultLootTablesList = Arrays.asList(
@@ -250,7 +251,7 @@ public class Config {
                 .define("allowMirror", true);
     }
 
-    public static void configureEnchants(ForgeConfigSpec.Builder configBuild) {
+    public static void configureEnchants(ModConfigSpec.Builder configBuild) {
 
         Config.enchantRarity = configBuild.comment("Rarity of the enchantmant. Possible values : COMMON, UNCOMMON, RARE, VERY_RARE. Default: RARE.")
                 .worldRestart()
@@ -267,7 +268,7 @@ public class Config {
     }
 
     public static JsonObject getBlueprintAllowedNBT(Block b) {
-        return blueprintWhitelist.get(ForgeRegistries.BLOCKS.getKey(b).toString());
+        return blueprintWhitelist.get(BuiltInRegistries.BLOCK.getKey(b).toString());
     }
 
     /**

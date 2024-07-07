@@ -9,17 +9,28 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import com.google.gson.JsonSyntaxException;
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.JsonOps;
+import com.mojang.serialization.MapCodec;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.RegistryAccess;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.util.GsonHelper;
 import net.minecraft.world.inventory.CraftingContainer;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.crafting.*;
+import net.minecraft.world.item.crafting.CraftingBookCategory;
+import net.minecraft.world.item.crafting.CraftingRecipe;
+import net.minecraft.world.item.crafting.CustomRecipe;
+import net.minecraft.world.item.crafting.Ingredient;
+import net.minecraft.world.item.crafting.RecipeHolder;
+import net.minecraft.world.item.crafting.RecipeManager;
+import net.minecraft.world.item.crafting.RecipeSerializer;
+import net.minecraft.world.item.crafting.ShapedRecipe;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.neoforged.neoforge.common.CommonHooks;
 import org.apache.commons.lang3.tuple.Triple;
 
 import java.util.ArrayList;
@@ -34,8 +45,8 @@ public class PrefabsBlueprintAggregatorRecipe extends CustomRecipe {
 
     public List<PrefabsBlueprintAggregatorRecipe.PrefabsBlueprintCapsuleRecipe> recipes = new ArrayList<>();
 
-    public PrefabsBlueprintAggregatorRecipe(ResourceLocation idIn, CraftingBookCategory craftingCategory) {
-        super(idIn, craftingCategory);
+    public PrefabsBlueprintAggregatorRecipe() {
+        super(CraftingBookCategory.MISC);
         instance = this;
     }
 
@@ -109,14 +120,16 @@ public class PrefabsBlueprintAggregatorRecipe extends CustomRecipe {
             FixIngredient(template, ingredients.getLeft(), "1");
             FixIngredient(template, ingredients.getMiddle(), "2");
             FixIngredient(template, ingredients.getRight(), "3");
-            this.recipe = ShapedRecipe.Serializer.SHAPED_RECIPE.fromJson(id, template);
+            this.recipe = ShapedRecipe.Serializer.SHAPED_RECIPE.codec().parse(JsonOps.INSTANCE, template).getOrThrow(false, null);
+//            Optional<RecipeHolder<?>> holder = RecipeManager.fromJson(id, template, JsonOps.INSTANCE);
+//	        this.recipe = holder.map(recipeHolder -> (ShapedRecipe) recipeHolder.value()).orElse(null);
         }
 
         private void FixIngredient(JsonObject template, StructureSaver.ItemStackKey ingredientKey, String key) {
             if (ingredientKey != null) {
                 // Add the key for the item
                 var keyOne = new JsonObject();
-                keyOne.addProperty("item", ForgeRegistries.ITEMS.getKey(ingredientKey.itemStack.getItem()).toString());
+                keyOne.addProperty("item", BuiltInRegistries.ITEM.getKey(ingredientKey.itemStack.getItem()).toString());
                 template.getAsJsonObject("key").add(key, keyOne);
             } else {
                 // remove the pattern entry if no ingredient by replacing the key with an empty space
@@ -147,7 +160,7 @@ public class PrefabsBlueprintAggregatorRecipe extends CustomRecipe {
 
             for (int i = 0; i < nonnulllist.size(); ++i) {
                 ItemStack itemstack = inv.getItem(i);
-                nonnulllist.set(i, net.minecraftforge.common.ForgeHooks.getCraftingRemainingItem(itemstack));
+                nonnulllist.set(i, CommonHooks.getCraftingRemainingItem(itemstack));
                 if (itemstack.getItem() instanceof CapsuleItem) {
                     nonnulllist.set(i, itemstack.copy());
                 } else if (i == ingredientOneIndex || i == ingredientTwoIndex || i == ingredientThreeIndex) {
@@ -158,11 +171,6 @@ public class PrefabsBlueprintAggregatorRecipe extends CustomRecipe {
             }
 
             return nonnulllist;
-        }
-
-        @Override
-        public ResourceLocation getId() {
-            return id;
         }
 
         @Override
@@ -234,22 +242,25 @@ public class PrefabsBlueprintAggregatorRecipe extends CustomRecipe {
 
     public static class Serializer implements RecipeSerializer<PrefabsBlueprintAggregatorRecipe> {
 
+        private static final Codec<PrefabsBlueprintAggregatorRecipe> CODEC =
+                MapCodec.unit(() -> instance != null ? instance : new PrefabsBlueprintAggregatorRecipe()).stable().codec();
+
         @Override
-        public PrefabsBlueprintAggregatorRecipe fromJson(ResourceLocation recipeId, JsonObject json) {
-            return instance != null ? instance : new PrefabsBlueprintAggregatorRecipe(recipeId, CraftingBookCategory.MISC);
+        public Codec<PrefabsBlueprintAggregatorRecipe> codec() {
+            return CODEC;
         }
 
         @Override
-        public PrefabsBlueprintAggregatorRecipe fromNetwork(ResourceLocation recipeId, FriendlyByteBuf buffer) {
+        public PrefabsBlueprintAggregatorRecipe fromNetwork(FriendlyByteBuf buffer) {
             if (instance == null) {
-                instance = new PrefabsBlueprintAggregatorRecipe(recipeId, CraftingBookCategory.MISC);
+                instance = new PrefabsBlueprintAggregatorRecipe();
             }
             instance.recipes.clear();
 
             int size = buffer.readInt();
             for (int i = 0; i < size; i++) {
                 ResourceLocation id = new ResourceLocation(buffer.readUtf());
-                ShapedRecipe recipe = ShapedRecipe.Serializer.SHAPED_RECIPE.fromNetwork(id, buffer);
+                ShapedRecipe recipe = ShapedRecipe.Serializer.SHAPED_RECIPE.fromNetwork(buffer);
                 instance.recipes.add(new PrefabsBlueprintCapsuleRecipe(id, recipe));
             }
 

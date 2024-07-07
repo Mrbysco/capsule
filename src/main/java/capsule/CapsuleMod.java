@@ -18,26 +18,25 @@ import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimplePreparableReloadListener;
 import net.minecraft.util.profiling.ProfilerFiller;
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.client.event.EntityRenderersEvent;
-import net.minecraftforge.client.event.RecipesUpdatedEvent;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.AddReloadListenerEvent;
-import net.minecraftforge.event.RegisterCommandsEvent;
-import net.minecraftforge.event.server.ServerStartingEvent;
-import net.minecraftforge.event.server.ServerStoppedEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.fml.ModLoadingContext;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.config.ModConfig;
-import net.minecraftforge.fml.event.config.ModConfigEvent;
-import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
-import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
-import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.DistExecutor;
+import net.neoforged.fml.ModLoadingContext;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.config.ModConfig;
+import net.neoforged.fml.event.config.ModConfigEvent;
+import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
+import net.neoforged.neoforge.client.event.EntityRenderersEvent;
+import net.neoforged.neoforge.client.event.RecipesUpdatedEvent;
+import net.neoforged.neoforge.client.event.RegisterColorHandlersEvent;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.AddReloadListenerEvent;
+import net.neoforged.neoforge.event.RegisterCommandsEvent;
+import net.neoforged.neoforge.event.server.ServerStartingEvent;
+import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import org.apache.logging.log4j.LogManager;
 
 import java.util.function.Consumer;
@@ -51,19 +50,20 @@ public class CapsuleMod {
     public static Consumer<Player> openGuiScreenCommon = DistExecutor.unsafeRunForDist(() -> () -> CapsuleMod::openGuiScreenClient, () -> () -> CapsuleMod::openGuiScreenServer);
     public static MinecraftServer server = null;
 
-    public CapsuleMod() {
+    public CapsuleMod(IEventBus modEventBus) {
         ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, Config.COMMON_CONFIG);
 
-        IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
         CapsuleBlocks.registerBlocks(modEventBus);
         CapsuleItems.registerItems(modEventBus);
         CapsuleCreativeTabs.registerTabs(modEventBus);
         CapsuleRecipes.registerRecipeSerializers(modEventBus);
         CapsuleEnchantments.registerEnchantments(modEventBus);
 
-        MinecraftForge.EVENT_BUS.addListener(EventPriority.HIGH, CapsuleMod::serverStarting);
-        MinecraftForge.EVENT_BUS.addListener(EventPriority.HIGH, CapsuleMod::serverStopped);
-        MinecraftForge.EVENT_BUS.addListener(EventPriority.NORMAL, CapsuleMod::RegisterCommands);
+        modEventBus.addListener(CapsuleNetwork::setupPackets);
+
+        NeoForge.EVENT_BUS.addListener(EventPriority.HIGH, CapsuleMod::serverStarting);
+        NeoForge.EVENT_BUS.addListener(EventPriority.HIGH, CapsuleMod::serverStopped);
+        NeoForge.EVENT_BUS.addListener(EventPriority.NORMAL, CapsuleMod::RegisterCommands);
     }
 
     public static void serverStarting(final ServerStartingEvent e) {
@@ -97,25 +97,24 @@ public class CapsuleMod {
 final class CapsuleModEventSubscriber {
 
     @SubscribeEvent
-    public static void setup(FMLCommonSetupEvent event) {
-        CapsuleNetwork.setup();
-    }
-
-    @SubscribeEvent
     @OnlyIn(Dist.CLIENT)
     public static void clientSetup(FMLClientSetupEvent event) {
-        // register color variants
-        Minecraft.getInstance().getItemColors().register((stack, tintIndex) -> {
-            if (stack.getItem() instanceof CapsuleItem) {
-                return CapsuleItem.getColorFromItemstack(stack, tintIndex);
-            }
-            return 0xFFFFFF;
-        }, CapsuleItems.CAPSULE.get());
         event.enqueueWork(() -> ItemProperties.register(
                 CapsuleItems.CAPSULE.get(),
                 new ResourceLocation(CapsuleMod.MODID, "state"),
                 (stack, world, entity, seed) -> CapsuleItem.getState(stack).getValue()
         ));
+    }
+
+    @SubscribeEvent
+    @OnlyIn(Dist.CLIENT)
+    public static void registerColor(RegisterColorHandlersEvent.Item event) {
+        event.register((stack, tintIndex) -> {
+            if (stack.getItem() instanceof CapsuleItem) {
+                return CapsuleItem.getColorFromItemstack(stack, tintIndex);
+            }
+            return 0xFFFFFF;
+        }, CapsuleItems.CAPSULE.get());
     }
 
     /**

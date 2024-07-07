@@ -26,16 +26,24 @@ public class CaptureBER implements BlockEntityRenderer<BlockEntityCapture> {
     }
 
     @Override
-    public void render(BlockEntityCapture BlockEntityCapture, float partialTicks, PoseStack matrixStackIn, MultiBufferSource bufferIn, int combinedLightIn, int combinedOverlayIn) {
+    public void render(BlockEntityCapture blockEntity, float partialTicks, PoseStack poseStack, MultiBufferSource bufferSource, int combinedLightIn, int combinedOverlayIn) {
         time += partialTicks;
-        int size = BlockEntityCapture.getSize();
+        int size = blockEntity.getSize();
         if (size == 0)
             return;
         int extendSize = (size - 1) / 2;
-        int color = BlockEntityCapture.getColor();
-        BlockPos offset = Spacial.getAnchor(BlockPos.ZERO, BlockEntityCapture.getBlockState(), size);
+        int color = blockEntity.getColor();
+        BlockPos offset = Spacial.getAnchor(BlockPos.ZERO, blockEntity.getBlockState(), size);
         AABB boundingBox = Spacial.getBB(offset.getX(), offset.getY(), offset.getZ(), size, extendSize);
-        VertexConsumer ivertexbuilder = bufferIn.getBuffer(RenderType.lines());
-        CapsulePreviewHandler.renderRecallBox(matrixStackIn, color, boundingBox, ivertexbuilder, time);
+        VertexConsumer buffer = bufferSource.getBuffer(RenderType.lines());
+        CapsulePreviewHandler.renderRecallBox(poseStack, color, boundingBox, buffer, time);
+    }
+
+    /**
+     * @return an appropriately size AABB for the BlockEntity
+     */
+    @Override
+    public AABB getRenderBoundingBox(BlockEntityCapture blockEntity) {
+        return blockEntity.getBoundingBox();
     }
 }

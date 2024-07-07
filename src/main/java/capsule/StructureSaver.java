@@ -29,15 +29,16 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
+import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.level.storage.LevelResource;
 import net.minecraft.world.phys.AABB;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.common.util.BlockSnapshot;
-import net.minecraftforge.event.entity.EntityJoinLevelEvent;
-import net.minecraftforge.event.level.BlockEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.common.util.BlockSnapshot;
+import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent;
+import net.neoforged.neoforge.event.level.BlockEvent;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -45,7 +46,11 @@ import org.apache.logging.log4j.Logger;
 import javax.annotation.Nullable;
 import java.io.File;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -426,7 +431,7 @@ public class StructureSaver {
     private static boolean isEntityPlaceEventAllowed(ServerLevel worldserver, BlockPos blockPos, @Nullable Player player) {
         BlockSnapshot blocksnapshot = BlockSnapshot.create(worldserver.dimension(), worldserver, blockPos);
         BlockEvent.EntityPlaceEvent event = new BlockEvent.EntityPlaceEvent(blocksnapshot, Blocks.DIRT.defaultBlockState(), player);
-        MinecraftForge.EVENT_BUS.post(event);
+        NeoForge.EVENT_BUS.post(event);
         return !event.isCanceled();
     }
 
@@ -643,7 +648,7 @@ public class StructureSaver {
      * Get the Capsule saving tool that remembers last capsule id.
      */
     public static CapsuleSavedData getCapsuleSavedData(ServerLevel capsuleWorld) {
-        return capsuleWorld.getDataStorage().computeIfAbsent(CapsuleSavedData::load, CapsuleSavedData::new, "capsuleData");
+        return capsuleWorld.getDataStorage().computeIfAbsent(new SavedData.Factory<>(CapsuleSavedData::new, CapsuleSavedData::load), "capsuleData");
     }
 
     @Nullable

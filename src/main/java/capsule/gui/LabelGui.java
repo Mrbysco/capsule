@@ -11,8 +11,9 @@ import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
+import net.neoforged.neoforge.network.PacketDistributor;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.List;
@@ -33,10 +34,6 @@ public class LabelGui extends Screen {
     public LabelGui(Player player) {
         super(Component.translatable("capsule.gui.capsuleName"));
         this.player = player;
-    }
-
-    public void tick() {
-        this.textInput.tick();
     }
 
     public void init() {
@@ -89,7 +86,7 @@ public class LabelGui extends Screen {
     }
 
     public void setCurrentItemLabel(String label) {
-        CapsuleNetwork.wrapper.sendToServer(new LabelEditedMessageToServer(label));
+        PacketDistributor.SERVER.noArg().send(new LabelEditedMessageToServer(label));
     }
 
     public ItemStack getItemStack() {
@@ -98,9 +95,8 @@ public class LabelGui extends Screen {
 
     @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
-        this.renderBackground(guiGraphics);
+        super.render(guiGraphics, mouseX, mouseY, partialTicks);
         guiGraphics.drawCenteredString(this.font, this.title, this.width / 2, 70, 16777215);
         textInput.render(guiGraphics, mouseX, mouseY, partialTicks);
-        super.render(guiGraphics, mouseX, mouseY, partialTicks);
     }
 }

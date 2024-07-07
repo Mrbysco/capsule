@@ -2,34 +2,41 @@ package capsule.items;
 
 import capsule.CapsuleMod;
 import capsule.items.CapsuleItem.CapsuleState;
-import capsule.recipes.*;
+import capsule.recipes.BlueprintCapsuleRecipe;
+import capsule.recipes.BlueprintChangeRecipe;
+import capsule.recipes.PrefabsBlueprintAggregatorRecipe;
+import capsule.recipes.RecoveryCapsuleRecipe;
+import capsule.recipes.UpgradeCapsuleRecipe;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.nbt.IntTag;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.CraftingRecipe;
 import net.minecraft.world.item.crafting.Recipe;
+import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeManager;
 import net.minecraft.world.item.crafting.ShapedRecipe;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.registries.DeferredRegister;
-import net.minecraftforge.registries.ForgeRegistries;
-import net.minecraftforge.registries.RegistryObject;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.neoforge.registries.DeferredItem;
+import net.neoforged.neoforge.registries.DeferredRegister;
 import org.apache.commons.lang3.tuple.Pair;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.List;
+import java.util.TreeMap;
 
 public class CapsuleItems {
 
     private static final int UPGRADE_STEP = 2;
 
-    private static final DeferredRegister<Item> ITEMS = DeferredRegister.create(ForgeRegistries.ITEMS, CapsuleMod.MODID);
-    public static final RegistryObject<CapsuleItem> CAPSULE = ITEMS.register("capsule", CapsuleItem::new);
+    private static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(CapsuleMod.MODID);
+    public static final DeferredItem<CapsuleItem> CAPSULE = ITEMS.register("capsule", CapsuleItem::new);
 
     public static ItemStack withState(CapsuleState state) {
         ItemStack capsule = new ItemStack(CapsuleItems.CAPSULE.get(), 1);
@@ -72,10 +79,11 @@ public class CapsuleItems {
 
         // create reference ItemStacks from json recipes
         // used for creative tab and JEI, disabled recipes should not raise here
-        for (Recipe<?> recipe : manager.getRecipes()) {
-            if (recipe.getId().getNamespace().equals("capsule") && hasNoEmptyTagsIngredient(recipe)) {
+        for (RecipeHolder<?> recipeHolder : manager.getRecipes()) {
+            var recipe = recipeHolder.value();
+            if (recipeHolder.id().getNamespace().equals("capsule") && hasNoEmptyTagsIngredient(recipe)) {
                 if (recipe instanceof BlueprintCapsuleRecipe) {
-                    blueprintCapsules.add(Pair.of(((BlueprintCapsuleRecipe) recipe).getResultItem(registryAccess), ((BlueprintCapsuleRecipe) recipe).recipe));
+                    blueprintCapsules.add(Pair.of(((BlueprintCapsuleRecipe) recipe).getResultItem(registryAccess), ((BlueprintCapsuleRecipe) recipe)));
                 } else if (recipe instanceof RecoveryCapsuleRecipe) {
                     recoveryCapsule = Pair.of(((RecoveryCapsuleRecipe) recipe).getResultItem(registryAccess), (RecoveryCapsuleRecipe) recipe);
                 } else if (recipe instanceof UpgradeCapsuleRecipe) {

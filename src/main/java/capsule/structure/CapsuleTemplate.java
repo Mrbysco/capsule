@@ -13,10 +13,20 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.IdMapper;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.nbt.*;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.DoubleTag;
+import net.minecraft.nbt.IntTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.NbtUtils;
+import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.Clearable;
-import net.minecraft.world.entity.*;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.MobSpawnType;
+import net.minecraft.world.entity.SpawnGroupData;
 import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.entity.decoration.Painting;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -24,7 +34,11 @@ import net.minecraft.world.level.EmptyBlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.ServerLevelAccessor;
-import net.minecraft.world.level.block.*;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.LiquidBlockContainer;
+import net.minecraft.world.level.block.Mirror;
+import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
@@ -35,12 +49,19 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.BitSetDiscreteVoxelShape;
 import net.minecraft.world.phys.shapes.DiscreteVoxelShape;
-import net.minecraftforge.registries.ForgeRegistries;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import javax.annotation.Nullable;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -422,7 +443,7 @@ public class CapsuleTemplate {
     public void filterFromWhitelist(List<String> outExcluded) {
         List<StructureTemplate.StructureBlockInfo> newBlockList = this.getPalette().stream()
                 .filter(b -> {
-                    ResourceLocation registryName = ForgeRegistries.BLOCKS.getKey(b.state().getBlock());
+                    ResourceLocation registryName = BuiltInRegistries.BLOCK.getKey(b.state().getBlock());
                     boolean included = b.nbt() == null
                             || registryName != null && Config.blueprintWhitelist.containsKey(registryName.toString());
                     if (!included && outExcluded != null) outExcluded.add(b.state().toString());
@@ -559,7 +580,7 @@ public class CapsuleTemplate {
         // rewritten vanilla code from CapsuleTemplate.takeEntitiesFromWorld
         List<Entity> list = worldIn.getEntitiesOfClass(
                 Entity.class,
-                new AABB(startPos, endPos),
+                new AABB(Vec3.atCenterOf(startPos), Vec3.atCenterOf(endPos)),
                 entity -> !(entity instanceof ItemEntity) && (!(entity instanceof LivingEntity) || (entity instanceof ArmorStand))
         );
         entities.clear();
@@ -582,8 +603,8 @@ public class CapsuleTemplate {
 
     public static AABB transformedAxisAlignedBB(StructurePlaceSettings placementIn, AABB bb) {
         return new AABB(
-                calculateRelativePosition(placementIn, BlockPos.containing(bb.minX, bb.minY, bb.minZ)),
-                calculateRelativePosition(placementIn, BlockPos.containing(bb.maxX, bb.maxY, bb.maxZ))
+               Vec3.atLowerCornerOf(calculateRelativePosition(placementIn, BlockPos.containing(bb.minX, bb.minY, bb.minZ))),
+               Vec3.atLowerCornerOf(calculateRelativePosition(placementIn, BlockPos.containing(bb.maxX, bb.maxY, bb.maxZ)))
         );
     }
 
@@ -779,7 +800,7 @@ public class CapsuleTemplate {
         if (palettes.isEmpty()) return false;
         try {
             for (StructureTemplate.StructureBlockInfo block : getPalette()) {
-                if (block.nbt() != null && !Config.blueprintWhitelist.containsKey(ForgeRegistries.BLOCKS.getKey(block.state().getBlock()).toString())) {
+                if (block.nbt() != null && !Config.blueprintWhitelist.containsKey(BuiltInRegistries.BLOCK.getKey(block.state().getBlock()).toString())) {
                     return false;
                 }
             }

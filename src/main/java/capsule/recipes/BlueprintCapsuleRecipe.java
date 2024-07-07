@@ -3,10 +3,13 @@ package capsule.recipes;
 import capsule.helpers.Capsule;
 import capsule.items.CapsuleItem;
 import com.google.gson.JsonObject;
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.ExtraCodecs;
 import net.minecraft.world.inventory.CraftingContainer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.CraftingBookCategory;
@@ -14,7 +17,9 @@ import net.minecraft.world.item.crafting.CraftingRecipe;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.item.crafting.ShapedRecipe;
+import net.minecraft.world.item.crafting.ShapedRecipePattern;
 import net.minecraft.world.level.Level;
+import net.neoforged.neoforge.common.CommonHooks;
 
 import static capsule.items.CapsuleItem.CapsuleState.DEPLOYED;
 
@@ -23,22 +28,30 @@ import static capsule.items.CapsuleItem.CapsuleState.DEPLOYED;
  * crafting a blueprint from a source capsule, in this case the structureName to create template is taken from the source capsule
  * crafting a prefab, in this case the structureName to create template is taken from the recipe output
  */
-public class BlueprintCapsuleRecipe implements CraftingRecipe {
-    public final ShapedRecipe recipe;
+public class BlueprintCapsuleRecipe extends ShapedRecipe {
+    final ShapedRecipePattern pattern;
+    final ItemStack result;
+    final String group;
+    final CraftingBookCategory category;
+    final boolean showNotification;
 
-    public BlueprintCapsuleRecipe(ShapedRecipe recipe) {
-        this.recipe = recipe;
+    public BlueprintCapsuleRecipe(String group, CraftingBookCategory category, ShapedRecipePattern pattern, ItemStack result, boolean showNotification) {
+        super(group, category, pattern, result);
+        this.group = group;
+        this.category = category;
+        this.pattern = pattern;
+        this.result = result;
+        this.showNotification = showNotification;
     }
 
     @Override
     public ItemStack getResultItem(RegistryAccess registryAccess) {
-        return recipe.getResultItem(registryAccess);
+        return super.getResultItem(registryAccess);
     }
 
     @Override
     public NonNullList<Ingredient> getIngredients() {
-        NonNullList<Ingredient> ingredients = recipe.getIngredients();
-        return ingredients;
+        return super.getIngredients();
     }
 
     /**
@@ -49,7 +62,7 @@ public class BlueprintCapsuleRecipe implements CraftingRecipe {
 
         for (int i = 0; i < nonnulllist.size(); ++i) {
             ItemStack itemstack = inv.getItem(i);
-            nonnulllist.set(i, net.minecraftforge.common.ForgeHooks.getCraftingRemainingItem(itemstack));
+            nonnulllist.set(i, CommonHooks.getCraftingRemainingItem(itemstack));
             if (itemstack.getItem() instanceof CapsuleItem) {
                 nonnulllist.set(i, itemstack.copy());
             }
@@ -66,7 +79,7 @@ public class BlueprintCapsuleRecipe implements CraftingRecipe {
      * Used to check if a recipe matches current crafting inventory
      */
     public boolean matches(CraftingContainer inv, Level worldIn) {
-        if (!recipe.matches(inv, worldIn)) {
+        if (!super.matches(inv, worldIn)) {
             return false;
         }
 
@@ -85,7 +98,7 @@ public class BlueprintCapsuleRecipe implements CraftingRecipe {
      * Returns a copy built from the original capsule.
      */
     public ItemStack assemble(CraftingContainer inv, RegistryAccess registryAccess) {
-        ItemStack referenceCapsule = recipe.getResultItem(registryAccess);
+        ItemStack referenceCapsule = super.getResultItem(registryAccess);
         for (int i = 0; i < inv.getContainerSize(); ++i) {
             ItemStack itemstack = inv.getItem(i);
             if (IsCopyable(itemstack)) {
@@ -99,7 +112,7 @@ public class BlueprintCapsuleRecipe implements CraftingRecipe {
         try {
             ItemStack blueprintItem = Capsule.newLinkedCapsuleItemStack(
                     CapsuleItem.getStructureName(referenceCapsule),
-                    CapsuleItem.getBaseColor(recipe.getResultItem(registryAccess)),
+                    CapsuleItem.getBaseColor(super.getResultItem(registryAccess)),
                     0xFFFFFF,
                     CapsuleItem.getSize(referenceCapsule),
                     CapsuleItem.isOverpowered(referenceCapsule),
@@ -121,13 +134,13 @@ public class BlueprintCapsuleRecipe implements CraftingRecipe {
 
     @Override
     public boolean canCraftInDimensions(int width, int height) {
-        return recipe.canCraftInDimensions(width, height);
+        return super.canCraftInDimensions(width, height);
     }
 
-    @Override
-    public ResourceLocation getId() {
-        return recipe.getId();
-    }
+//    @Override
+//    public ResourceLocation getId() {
+//        return recipe.getId();
+//    }
 
     @Override
     public RecipeSerializer<?> getSerializer() {
@@ -145,19 +158,39 @@ public class BlueprintCapsuleRecipe implements CraftingRecipe {
     }
 
     public static class Serializer implements RecipeSerializer<BlueprintCapsuleRecipe> {
+        public static final Codec<BlueprintCapsuleRecipe> CODEC = RecordCodecBuilder.create(
+                instance -> instance.group(
+                                ExtraCodecs.strictOptionalField(Codec.STRING, "group", "").forGetter(recipe -> recipe.group),
+                                CraftingBookCategory.CODEC.fieldOf("category").orElse(CraftingBookCategory.MISC).forGetter(recipe -> recipe.category),
+                                ShapedRecipePattern.MAP_CODEC.forGetter(recipe -> recipe.pattern),
+                                ItemStack.ITEM_WITH_COUNT_CODEC.fieldOf("result").forGetter(recipe -> recipe.result),
+                                ExtraCodecs.strictOptionalField(Codec.BOOL, "show_notification", true).forGetter(recipe -> recipe.showNotification)
+                        )
+                        .apply(instance, BlueprintCapsuleRecipe::new)
+        );
+
         @Override
-        public BlueprintCapsuleRecipe fromJson(ResourceLocation recipeId, JsonObject json) {
-            return new BlueprintCapsuleRecipe(ShapedRecipe.Serializer.SHAPED_RECIPE.fromJson(recipeId, json));
+        public Codec<BlueprintCapsuleRecipe> codec() {
+            return CODEC;
         }
 
         @Override
-        public BlueprintCapsuleRecipe fromNetwork(ResourceLocation recipeId, FriendlyByteBuf buffer) {
-            return new BlueprintCapsuleRecipe(ShapedRecipe.Serializer.SHAPED_RECIPE.fromNetwork(recipeId, buffer));
+        public BlueprintCapsuleRecipe fromNetwork(FriendlyByteBuf pBuffer) {
+            String s = pBuffer.readUtf();
+            CraftingBookCategory craftingbookcategory = pBuffer.readEnum(CraftingBookCategory.class);
+            ShapedRecipePattern shapedrecipepattern = ShapedRecipePattern.fromNetwork(pBuffer);
+            ItemStack itemstack = pBuffer.readItem();
+            boolean flag = pBuffer.readBoolean();
+            return new BlueprintCapsuleRecipe(s, craftingbookcategory, shapedrecipepattern, itemstack, flag);
         }
 
         @Override
-        public void toNetwork(FriendlyByteBuf buffer, BlueprintCapsuleRecipe recipe) {
-            ShapedRecipe.Serializer.SHAPED_RECIPE.toNetwork(buffer, recipe.recipe);
+        public void toNetwork(FriendlyByteBuf pBuffer, BlueprintCapsuleRecipe pRecipe) {
+            pBuffer.writeUtf(pRecipe.group);
+            pBuffer.writeEnum(pRecipe.category);
+            pRecipe.pattern.toNetwork(pBuffer);
+            pBuffer.writeItem(pRecipe.result);
+            pBuffer.writeBoolean(pRecipe.showNotification);
         }
     }
 }

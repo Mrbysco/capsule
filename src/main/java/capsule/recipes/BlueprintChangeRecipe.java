@@ -16,8 +16,8 @@ import static capsule.items.CapsuleItem.CapsuleState.DEPLOYED;
 
 public class BlueprintChangeRecipe extends CustomRecipe {
 
-    public BlueprintChangeRecipe(ResourceLocation id, CraftingBookCategory category) {
-        super(id, category);
+    public BlueprintChangeRecipe(CraftingBookCategory category) {
+        super(category);
     }
 
     public ItemStack getResultItem(RegistryAccess registryAccess) {

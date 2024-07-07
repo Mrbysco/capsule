@@ -4,21 +4,21 @@ import capsule.items.CapsuleItem;
 import capsule.items.CapsuleItems;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.RegistryAccess;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.inventory.CraftingContainer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.CraftingBookCategory;
 import net.minecraft.world.item.crafting.CustomRecipe;
 import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.level.Level;
+import net.neoforged.neoforge.common.CommonHooks;
 
 import static capsule.items.CapsuleItem.CapsuleState.DEPLOYED;
 import static capsule.items.CapsuleItem.CapsuleState.EMPTY;
 
 public class ClearCapsuleRecipe extends CustomRecipe {
 
-    public ClearCapsuleRecipe(ResourceLocation id, CraftingBookCategory category) {
-        super(id, category);
+    public ClearCapsuleRecipe(CraftingBookCategory category) {
+        super(category);
     }
 
 
@@ -85,7 +85,7 @@ public class ClearCapsuleRecipe extends CustomRecipe {
 
         for (int i = 0; i < nonnulllist.size(); ++i) {
             ItemStack itemstack = inv.getItem(i);
-            nonnulllist.set(i, net.minecraftforge.common.ForgeHooks.getCraftingRemainingItem(itemstack));
+            nonnulllist.set(i, CommonHooks.getCraftingRemainingItem(itemstack));
             if (itemstack.getItem() instanceof CapsuleItem && !CapsuleItem.hasState(itemstack, DEPLOYED)) {
                 // Copy the capsule and give back a recovery capsule of the previous content
                 ItemStack copy = itemstack.copy();

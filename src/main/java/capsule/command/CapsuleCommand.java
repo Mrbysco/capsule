@@ -15,16 +15,17 @@ import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import com.mojang.brigadier.exceptions.DynamicCommandExceptionType;
 import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
 import com.mojang.brigadier.tree.CommandNode;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
-import net.minecraft.commands.CommandRuntimeException;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.ClickEvent.Action;
@@ -50,7 +51,6 @@ import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
-import net.minecraftforge.registries.ForgeRegistries;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -75,6 +75,7 @@ import static net.minecraft.commands.arguments.EntityArgument.player;
  * @author Lythom
  */
 public class CapsuleCommand {
+    private static final DynamicCommandExceptionType ERROR_NO_ACTION_PERFORMED = new DynamicCommandExceptionType(p_311534_ -> (Component)p_311534_);
 
     public static List<ServerPlayer> sentUsageURL = new ArrayList<>();
 
@@ -298,7 +299,7 @@ public class CapsuleCommand {
         return 0;
     }
 
-    private static int executeGiveLinked(ServerPlayer player, String rewardTemplateName, boolean withRecall) {
+    private static int executeGiveLinked(ServerPlayer player, String rewardTemplateName, boolean withRecall) throws CommandSyntaxException {
         String templateName = rewardTemplateName.replaceAll(".nbt", "").replaceAll(".schematic", "");
         if (player != null && !StringUtil.isNullOrEmpty(templateName)) {
             ItemStack capsule = Capsule.createLinkedCapsuleFromReward(Config.getRewardPathFromName(templateName), player);
@@ -308,14 +309,14 @@ public class CapsuleCommand {
             if (!capsule.isEmpty()) {
                 giveCapsule(capsule, player);
             } else {
-                throw new CommandRuntimeException(Component.literal("Reward Capsule " + rewardTemplateName + " not found "));
+                throw ERROR_NO_ACTION_PERFORMED.create(Component.literal("Reward Capsule " + rewardTemplateName + " not found "));
             }
             return 1;
         }
         return 0;
     }
 
-    private static int executeGiveBlueprint(ServerPlayer player, String rewardTemplateName) {
+    private static int executeGiveBlueprint(ServerPlayer player, String rewardTemplateName) throws CommandSyntaxException {
         String templateName = rewardTemplateName.replaceAll(".nbt", "").replaceAll(".schematic", "");
         if (player != null && !StringUtil.isNullOrEmpty(templateName)) {
 
@@ -345,18 +346,18 @@ public class CapsuleCommand {
                 giveCapsule(capsule, player);
 
             } else {
-                throw new CommandRuntimeException(Component.literal("Reward Capsule " + rewardTemplateName + " not found "));
+                throw ERROR_NO_ACTION_PERFORMED.create(Component.literal("Reward Capsule " + rewardTemplateName + " not found "));
             }
         }
         return 0;
     }
 
-    private static int executeGiveRandomLoot(ServerPlayer player) throws CommandRuntimeException {
+    private static int executeGiveRandomLoot(ServerPlayer player) throws CommandSyntaxException {
         if (player != null) {
             LootParams builder = (new LootParams.Builder(player.serverLevel()))
                     .withParameter(LootContextParams.THIS_ENTITY, player).withParameter(LootContextParams.ORIGIN, player.position()).create(LootContextParamSets.COMMAND);
             List<ItemStack> loots = new ArrayList<>();
-            CapsuleLootTableHook.capsulePool.addRandomItems(loots::add, (new LootContext.Builder(builder)).create((ResourceLocation)null));
+            CapsuleLootTableHook.capsulePool.addRandomItems(loots::add, (new LootContext.Builder(builder)).create(Optional.empty()));
             if (loots.size() <= 0) {
                 player.sendSystemMessage(Component.literal("No loot this time !"));
             } else {
@@ -369,7 +370,7 @@ public class CapsuleCommand {
         return 0;
     }
 
-    private static int executeFromExistingReward(ServerPlayer player, String templateName) throws CommandRuntimeException {
+    private static int executeFromExistingReward(ServerPlayer player, String templateName) throws CommandSyntaxException {
         if (player != null && !StringUtil.isNullOrEmpty(templateName) && player.level() instanceof ServerLevel) {
             String structurePath = Config.getRewardPathFromName(templateName);
             CapsuleTemplateManager templatemanager = StructureSaver.getRewardManager(player.getServer().getResourceManager());
@@ -390,14 +391,14 @@ public class CapsuleCommand {
                 giveCapsule(capsule, player);
 
             } else {
-                throw new CommandRuntimeException(Component.literal("Reward Capsule \"" + templateName + "\" not found "));
+                throw ERROR_NO_ACTION_PERFORMED.create(Component.literal("Reward Capsule \"" + templateName + "\" not found "));
             }
             return 1;
         }
         return 0;
     }
 
-    private static int executeFromStructure(ServerPlayer player, String templateName) throws CommandRuntimeException {
+    private static int executeFromStructure(ServerPlayer player, String templateName) throws CommandSyntaxException, CommandSyntaxException {
         if (player != null && !StringUtil.isNullOrEmpty(templateName) && player.level() instanceof ServerLevel) {
             CompoundTag data = new CompoundTag();
             int size = -1;
@@ -442,7 +443,7 @@ public class CapsuleCommand {
                 giveCapsule(capsule, player);
                 return 1;
             } else {
-                throw new CommandRuntimeException(Component.literal("Structure \"" + path + "\" not found "));
+                throw ERROR_NO_ACTION_PERFORMED.create(Component.literal("Structure \"" + path + "\" not found "));
             }
         }
         return 0;
@@ -590,7 +591,7 @@ public class CapsuleCommand {
                     BlockEntity BlockEntity = player.serverLevel().getBlockEntity(position);
 
                     String BlockEntityTag = BlockEntity == null ? "" : "{BlockEntityTag:" + BlockEntity.serializeNBT().toString() + "}";
-                    String command = "/give @p " + ForgeRegistries.BLOCKS.getKey(state.getBlock()) + BlockEntityTag + " 1 ";
+                    String command = "/give @p " + BuiltInRegistries.BLOCK.getKey(state.getBlock()) + BlockEntityTag + " 1 ";
                     MutableComponent msg = Component.literal(command);
                     player.sendSystemMessage(msg.withStyle(style -> style
                             .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Component.literal("Click to copy to clipboard")))
@@ -612,7 +613,7 @@ public class CapsuleCommand {
 
                 String tag = heldItem.hasTag() ? String.valueOf(heldItem.getTag()) : "";
 
-                String command = "/give @p " + ForgeRegistries.ITEMS.getKey(heldItem.getItem()) + tag + " 1 ";
+                String command = "/give @p " + BuiltInRegistries.ITEM.getKey(heldItem.getItem()) + tag + " 1 ";
                 MutableComponent msg = Component.literal(command);
                 msg.getStyle().withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Component.literal("Copy/Paste from client log (click to open)")));
                 msg.getStyle().withClickEvent(new ClickEvent(Action.OPEN_FILE, "logs/latest.log"));
@@ -627,6 +628,6 @@ public class CapsuleCommand {
     private static void giveCapsule(ItemStack capsule, Player player) {
         ItemEntity entity = player.drop(capsule, false);
         entity.setNoPickUpDelay();
-        entity.setThrower(player.getUUID());
+        entity.setThrower(player);
     }
 }

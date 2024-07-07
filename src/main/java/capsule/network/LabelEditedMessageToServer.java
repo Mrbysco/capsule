@@ -1,66 +1,32 @@
 package capsule.network;
 
-import capsule.items.CapsuleItem;
+import capsule.CapsuleMod;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.network.NetworkEvent;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
-import java.util.function.Supplier;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
 
 /**
  * This Network Message is sent from the client to the server
  */
-public class LabelEditedMessageToServer {
-
-    protected static final Logger LOGGER = LogManager.getLogger(LabelEditedMessageToServer.class);
-
-    private String label;
-
-    public LabelEditedMessageToServer(String newLabel) {
-        setLabel(newLabel);
-    }
+public record LabelEditedMessageToServer(String label) implements CustomPacketPayload {
+    public static final ResourceLocation ID = new ResourceLocation(CapsuleMod.MODID, "label_edited_message");
 
     public LabelEditedMessageToServer(FriendlyByteBuf buf) {
-        try {
-            this.setLabel(buf.readUtf(32767));
-        } catch (IndexOutOfBoundsException ioe) {
-            LOGGER.error("Exception while reading CapsuleLabelEditedMessageToClient: " + ioe);
-        }
+        this(buf.readUtf(32767));
     }
 
-    public void toBytes(FriendlyByteBuf buf) {
+    public void write(FriendlyByteBuf buf) {
         buf.writeUtf(this.label);
     }
 
-    public void onServer(Supplier<NetworkEvent.Context> ctx) {
-        final ServerPlayer sendingPlayer = ctx.get().getSender();
-        if (sendingPlayer == null) {
-            LOGGER.error("ServerPlayerEntity was null when LabelEditedMessageToServer was received");
-            return;
-        }
-        ctx.get().enqueueWork(() -> {
-            ItemStack serverStack = sendingPlayer.getMainHandItem();
-            if (serverStack.getItem() instanceof CapsuleItem) {
-                // of the player didn't swap item during ui opening
-                CapsuleItem.setLabel(serverStack, getLabel());
-            }
-        });
-        ctx.get().setPacketHandled(true);
+    @Override
+    public ResourceLocation id() {
+        return ID;
     }
 
     @Override
     public String toString() {
-        return getClass().toString() + "[label=" + getLabel() + "]";
-    }
-
-    public String getLabel() {
-        return label;
-    }
-    public void setLabel(String label) {
-        this.label = label;
+        return getClass().toString() + "[label=" + label() + "]";
     }
 
 }

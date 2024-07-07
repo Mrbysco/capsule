@@ -1,87 +1,23 @@
 package capsule.network;
 
-import capsule.Config;
-import capsule.StructureSaver;
-import capsule.helpers.Capsule;
-import capsule.items.CapsuleItem;
+import capsule.CapsuleMod;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.block.Mirror;
-import net.minecraft.world.level.block.Rotation;
-import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
-import net.minecraftforge.network.NetworkEvent;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
 
-import java.util.Map;
-import java.util.function.Supplier;
-
-import static capsule.items.CapsuleItem.CapsuleState.DEPLOYED;
-
-public class CapsuleLeftClickQueryToServer {
-
-    protected static final Logger LOGGER = LogManager.getLogger(CapsuleContentPreviewQueryToServer.class);
-
-    public CapsuleLeftClickQueryToServer() {
-    }
+public record CapsuleLeftClickQueryToServer() implements CustomPacketPayload {
+    public static final ResourceLocation ID = new ResourceLocation(CapsuleMod.MODID, "left_click_query");
 
     public CapsuleLeftClickQueryToServer(FriendlyByteBuf buf) {
+        this();
     }
 
-    public void onServer(Supplier<NetworkEvent.Context> ctx) {
-        final ServerPlayer sendingPlayer = ctx.get().getSender();
-        if (sendingPlayer == null) {
-            LOGGER.error("ServerPlayerEntity was null when " + this.getClass().getName() + " was received");
-            return;
-        }
-
-        ctx.get().enqueueWork(() -> {
-            // read the content of the template and send it back to the client
-            ItemStack stack = sendingPlayer.getMainHandItem();
-            if (stack.getItem() instanceof CapsuleItem && CapsuleItem.isBlueprint(stack) && CapsuleItem.hasState(stack, DEPLOYED)) {
-                // Reload if no missing materials
-                Map<StructureSaver.ItemStackKey, Integer> missing = Capsule.reloadBlueprint(stack, sendingPlayer.serverLevel(), sendingPlayer);
-                if (missing != null && missing.size() > 0) {
-                    MutableComponent message = Component.literal("Missing :");
-                    for (Map.Entry<StructureSaver.ItemStackKey, Integer> entry : missing.entrySet()) {
-                        message.append("\n* " + entry.getValue() + " ");
-                        message.append(entry.getKey().itemStack.getItem().getName(entry.getKey().itemStack));
-                    }
-                    sendingPlayer.sendSystemMessage(message);
-                }
-            } else if (stack.getItem() instanceof CapsuleItem && CapsuleItem.canRotate(stack)) {
-                StructurePlaceSettings placement = CapsuleItem.getPlacement(stack);
-                if (sendingPlayer.isShiftKeyDown()) {
-                    if (Config.allowMirror) {
-                        switch (placement.getMirror()) {
-                            case FRONT_BACK:
-                                placement.setMirror(Mirror.LEFT_RIGHT);
-                                break;
-                            case LEFT_RIGHT:
-                                placement.setMirror(Mirror.NONE);
-                                break;
-                            case NONE:
-                                placement.setMirror(Mirror.FRONT_BACK);
-                                break;
-                        }
-                        sendingPlayer.sendSystemMessage(Component.translatable("[ ]: " + Capsule.getMirrorLabel(placement)));
-                    } else {
-                        sendingPlayer.sendSystemMessage(Component.translatable("Mirroring disabled by config"));
-                    }
-                } else {
-                    placement.setRotation(placement.getRotation().getRotated(Rotation.CLOCKWISE_90));
-                    sendingPlayer.sendSystemMessage(Component.translatable("⟳: " + Capsule.getRotationLabel(placement)));
-                }
-                CapsuleItem.setPlacement(stack, placement);
-            }
-        });
-        ctx.get().setPacketHandled(true);
+    public void write(FriendlyByteBuf buf) {
     }
 
-    public void toBytes(FriendlyByteBuf buf) {
+    @Override
+    public ResourceLocation id() {
+        return ID;
     }
 
     @Override

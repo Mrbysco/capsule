@@ -1,10 +1,12 @@
 package capsule.helpers;
 
+import net.minecraft.core.HolderSet;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 import net.minecraft.util.StringUtil;
 import net.minecraft.world.level.block.Block;
-import net.minecraftforge.registries.ForgeRegistries;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -25,7 +27,7 @@ public class Serialization {
             ResourceLocation excludedLocation = new ResourceLocation(blockId);
             // is it a whole registryName to exclude ?
             if (StringUtil.isNullOrEmpty(excludedLocation.getPath())) {
-                List<Block> blockIdsList = ForgeRegistries.BLOCKS.getEntries().stream()
+                List<Block> blockIdsList = BuiltInRegistries.BLOCK.entrySet().stream()
                         .filter(blockEntry -> blockEntry.getKey().toString().toLowerCase().contains(blockId.toLowerCase()))
                         .map(Map.Entry::getValue)
                         .collect(Collectors.toList());
@@ -36,19 +38,17 @@ public class Serialization {
                 }
             } else {
                 // is it a block ?
-                Block b = ForgeRegistries.BLOCKS.getValue(excludedLocation);
+                Block b = BuiltInRegistries.BLOCK.get(excludedLocation);
                 if (b != null) {
                     // exclude the block
                     states.add(b);
                 } else {
                     // is it a tag ?
-                    Optional<TagKey<Block>> tag = ForgeRegistries.BLOCKS.tags().getTagNames()
-                            .filter(t -> excludedLocation.equals(t.location()))
-                            .findFirst();
+                    Optional<HolderSet.Named<Block>> tag = BuiltInRegistries.BLOCK.getTag(TagKey.create(Registries.BLOCK, excludedLocation));
                     if (tag.isPresent()) {
                         // get all blocks concerned by tag
-                        List<Block> blockIdsList = ForgeRegistries.BLOCKS.getValues().stream()
-                                .filter((Block block) -> block.builtInRegistryHolder().is(tag.get())).collect(Collectors.toList());
+                        List<Block> blockIdsList = new ArrayList<>();
+                        tag.get().forEach((holder) -> blockIdsList.add(holder.value()));
                         states.addAll(blockIdsList);
                     } else {
                         notfound.add(excludedLocation.toString());
@@ -70,7 +70,7 @@ public class Serialization {
     public static String[] serializeBlockArray(Block[] states) {
         String[] blocksNames = new String[states.length];
         for (int i = 0; i < states.length; i++) {
-            ResourceLocation registryName = ForgeRegistries.BLOCKS.getKey(states[i]);
+            ResourceLocation registryName = BuiltInRegistries.BLOCK.getKey(states[i]);
             blocksNames[i] = registryName == null ? null : registryName.toString();
         }
         return blocksNames;

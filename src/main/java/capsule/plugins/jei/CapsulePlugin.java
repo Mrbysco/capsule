@@ -14,6 +14,7 @@ import mezz.jei.api.ingredients.subtypes.UidContext;
 import mezz.jei.api.registration.IRecipeRegistration;
 import mezz.jei.api.registration.ISubtypeRegistration;
 import net.minecraft.core.NonNullList;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.ByteTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -21,6 +22,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.CraftingBookCategory;
 import net.minecraft.world.item.crafting.CraftingRecipe;
 import net.minecraft.world.item.crafting.Ingredient;
+import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.ShapelessRecipe;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
@@ -49,7 +51,7 @@ public class CapsulePlugin implements IModPlugin {
 
         // normally you should ignore nbt per-item, but these tags are universally understood
         // and apply to many vanilla and modded items
-        List<CraftingRecipe> recipes = new ArrayList<>();
+        List<RecipeHolder<CraftingRecipe>> recipes = new ArrayList<>();
 
         Ingredient upgradeIngredient = CapsuleItems.upgradedCapsule.getValue().upgradeIngredient;
         for (ItemStack capsule : CapsuleItems.capsuleList.keySet()) {
@@ -57,10 +59,12 @@ public class CapsulePlugin implements IModPlugin {
                 ItemStack capsuleUp = CapsuleItems.getUpgradedCapsule(capsule, upLevel);
                 NonNullList<Ingredient> ingredients = NonNullList.withSize(upLevel + 1, upgradeIngredient);
                 ingredients.set(0, Ingredient.of(capsule));
-                recipes.add(new ShapelessRecipe(new ResourceLocation(CapsuleMod.MODID, "capsule"), "capsule", CraftingBookCategory.MISC, capsuleUp, ingredients));
+                recipes.add(new RecipeHolder<>(new ResourceLocation(CapsuleMod.MODID, "capsule_" + BuiltInRegistries.ITEM.getKey(capsule.getItem())),
+                        new ShapelessRecipe("capsule", CraftingBookCategory.MISC, capsuleUp, ingredients)));
             }
             // clear
-            recipes.add(new ShapelessRecipe(new ResourceLocation(CapsuleMod.MODID, "capsule"), "capsule", CraftingBookCategory.MISC, capsule, NonNullList.of(Ingredient.EMPTY, Ingredient.of(CapsuleItems.getUnlabelledCapsule(capsule)))));
+            recipes.add(new RecipeHolder<>(new ResourceLocation(CapsuleMod.MODID, "capsule_clear"),
+                    new ShapelessRecipe( "capsule", CraftingBookCategory.MISC, capsule, NonNullList.of(Ingredient.EMPTY, Ingredient.of(CapsuleItems.getUnlabelledCapsule(capsule))))));
         }
 
         if (CapsuleItems.recoveryCapsule == null ||
@@ -76,19 +80,20 @@ public class CapsulePlugin implements IModPlugin {
         ItemStack unlabelledDeployed = CapsuleItems.deployedCapsule.getKey();
         CapsuleItem.setState(unlabelledDeployed, DEPLOYED);
         Ingredient anyBlueprint = Ingredient.of(CapsuleItems.blueprintCapsules.stream().map(Pair::getKey).toArray(ItemStack[]::new));
-        Ingredient unlabelledIng = Ingredient.merge(Arrays.asList(Ingredient.of(unlabelled), anyBlueprint, Ingredient.of(recoveryCapsule)));
+        Ingredient unlabelledIng = Ingredient.fromValues(Arrays.asList(Ingredient.of(unlabelled), anyBlueprint, Ingredient.of(recoveryCapsule)).stream().flatMap(i -> Arrays.stream(i.values)));
         // recovery
-        recipes.add(CapsuleItems.recoveryCapsule.getValue().recipe);
+        recipes.add(new RecipeHolder<>(new ResourceLocation(CapsuleMod.MODID, "recovery_capsule"), CapsuleItems.recoveryCapsule.getValue()));
         for (Pair<ItemStack, CraftingRecipe> r : CapsuleItems.blueprintCapsules) {
-            recipes.add(r.getValue());
+            recipes.add(new RecipeHolder<>(new ResourceLocation(CapsuleMod.MODID, "blueprint_capsule_" + BuiltInRegistries.ITEM.getKey(r.getKey().getItem())), r.getValue()));
         }
         for (Pair<ItemStack, CraftingRecipe> r : CapsuleItems.blueprintPrefabs) {
-            recipes.add(r.getValue());
+            recipes.add(new RecipeHolder<>(new ResourceLocation(CapsuleMod.MODID, "blueprint_prefab_" + BuiltInRegistries.ITEM.getKey(r.getKey().getItem())), r.getValue()));
         }
         ItemStack withNewTemplate = CapsuleItems.blueprintChangedCapsule.getKey();
         CapsuleItem.setStructureName(withNewTemplate, "newTemplate");
         CapsuleItem.setLabel(withNewTemplate, "Changed Template");
-        recipes.add(new ShapelessRecipe(new ResourceLocation(CapsuleMod.MODID, "capsule"), "capsule", CraftingBookCategory.MISC, withNewTemplate, NonNullList.of(Ingredient.EMPTY, anyBlueprint, unlabelledIng)));
+        recipes.add((new RecipeHolder<>(new ResourceLocation(CapsuleMod.MODID, "capsule"),
+                new ShapelessRecipe("capsule", CraftingBookCategory.MISC, withNewTemplate, NonNullList.of(Ingredient.EMPTY, anyBlueprint, unlabelledIng)))));
 
         registry.addRecipes(RecipeTypes.CRAFTING, recipes);
         registry.addIngredientInfo(new ArrayList<>(CapsuleItems.capsuleList.keySet()), VanillaTypes.ITEM_STACK, Component.translatable("jei.capsule.desc.capsule"));

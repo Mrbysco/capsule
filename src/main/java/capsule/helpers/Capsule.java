@@ -6,7 +6,6 @@ import capsule.items.CapsuleItem;
 import capsule.items.CapsuleItem.CapsuleState;
 import capsule.items.CapsuleItems;
 import capsule.loot.CapsuleLootEntry;
-import capsule.network.CapsuleNetwork;
 import capsule.network.CapsuleUndeployNotifToClient;
 import capsule.structure.CapsuleTemplate;
 import capsule.structure.CapsuleTemplateManager;
@@ -35,9 +34,10 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.common.capabilities.ForgeCapabilities;
-import net.minecraftforge.items.IItemHandler;
-import net.minecraftforge.network.PacketDistributor;
+import net.neoforged.neoforge.capabilities.Capabilities;
+import net.neoforged.neoforge.common.CommonHooks;
+import net.neoforged.neoforge.items.IItemHandler;
+import net.neoforged.neoforge.network.PacketDistributor;
 import org.apache.commons.lang3.text.WordUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -110,8 +110,7 @@ public class Capsule {
 
     private static void notifyUndeploy(Player playerIn, BlockPos startPos, int size, String templateName) {
         BlockPos center = startPos.offset(size / 2, size / 2, size / 2);
-        CapsuleNetwork.wrapper.send(
-                PacketDistributor.NEAR.with(() -> new PacketDistributor.TargetPoint(center.getX(), center.getY(), center.getZ(), 200 + size, playerIn.getCommandSenderWorld().dimension())),
+                PacketDistributor.NEAR.with(new PacketDistributor.TargetPoint(center.getX(), center.getY(), center.getZ(), 200 + size, playerIn.getCommandSenderWorld().dimension())).send(
                 new CapsuleUndeployNotifToClient(center, playerIn.blockPosition(), size, templateName)
         );
     }
@@ -249,7 +248,7 @@ public class Capsule {
         }
         // try to provision the materials from linked inventory or player inventory
         IItemHandler inv = CapsuleItem.getSourceInventory(blueprint, world);
-        IItemHandler inv2 = player == null ? null : player.getCapability(ForgeCapabilities.ITEM_HANDLER, null).orElse(null);
+        IItemHandler inv2 = player == null ? null : player.getCapability(Capabilities.ItemHandler.ENTITY, null);
         Map<Integer, Integer> inv1SlotQuantityProvisions = recordSlotQuantityProvisions(missingMaterials, inv);
         Map<Integer, Integer> inv2SlotQuantityProvisions = recordSlotQuantityProvisions(missingMaterials, inv2);
 
@@ -270,7 +269,7 @@ public class Capsule {
 
     public static void extractItemOrFluid(IItemHandler inv, Integer slot, Integer qty) {
         ItemStack item = inv.extractItem(slot, qty, false);
-        ItemStack container = net.minecraftforge.common.ForgeHooks.getCraftingRemainingItem(item);
+        ItemStack container = CommonHooks.getCraftingRemainingItem(item);
         inv.insertItem(slot, container, false);
     }
 
@@ -308,7 +307,7 @@ public class Capsule {
         double startPosition = playerIn.getY() - 0.3D + (double) playerIn.getEyeHeight();
         ItemEntity ItemEntity = new ItemEntity(playerIn.getCommandSenderWorld(), playerIn.getX(), startPosition, playerIn.getZ(), capsule);
         ItemEntity.setPickUpDelay(20);// cannot be picked up before deployment
-        ItemEntity.setThrower(playerIn.getUUID());
+        ItemEntity.setThrower(playerIn);
         ItemEntity.setExtendedLifetime();
 
         if (destination != null && capsule.getTag() != null) {
@@ -409,8 +408,7 @@ public class Capsule {
                 boolean captured = captureContentIntoCapsule(capsule, anchor, itemEntity.thrower, size, extendLength, itemWorld);
                 if (captured) {
                     BlockPos center = anchor.offset(0, size / 2, 0);
-                    CapsuleNetwork.wrapper.send(
-                            PacketDistributor.NEAR.with(() -> new PacketDistributor.TargetPoint(center.getX(), center.getY(), center.getZ(), 200 + size, itemWorld.dimension())),
+                    PacketDistributor.NEAR.with(new PacketDistributor.TargetPoint(center.getX(), center.getY(), center.getZ(), 200 + size, itemWorld.dimension())).send(
                             new CapsuleUndeployNotifToClient(center, itemEntity.blockPosition(), size, CapsuleItem.getStructureName(capsule))
                     );
                 }

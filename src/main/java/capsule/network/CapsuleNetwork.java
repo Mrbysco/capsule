@@ -1,35 +1,37 @@
 package capsule.network;
 
-import net.minecraft.resources.ResourceLocation;
-import net.minecraftforge.network.NetworkRegistry;
-import net.minecraftforge.network.simple.SimpleChannel;
+import capsule.CapsuleMod;
+import capsule.network.handler.ClientPayloadHandler;
+import capsule.network.handler.ServerPayloadHandler;
+import net.neoforged.neoforge.network.event.RegisterPayloadHandlerEvent;
+import net.neoforged.neoforge.network.registration.IPayloadRegistrar;
 
 public class CapsuleNetwork {
-    private static final String PROTOCOL_VERSION = "1";
-    public static byte CAPSULE_CHANNEL_MESSAGE_ID = 1;
+    public static void setupPackets(final RegisterPayloadHandlerEvent event) {
+        final IPayloadRegistrar registrar = event.registrar(CapsuleMod.MODID);
 
-    public static SimpleChannel wrapper = NetworkRegistry.newSimpleChannel(
-            new ResourceLocation("capsule", "capsule_channel"),
-            () -> PROTOCOL_VERSION,
-            PROTOCOL_VERSION::equals,
-            PROTOCOL_VERSION::equals
-    );
-
-    public static void setup() {
         // client ask server to edit capsule label
-        wrapper.registerMessage(CAPSULE_CHANNEL_MESSAGE_ID++, LabelEditedMessageToServer.class, LabelEditedMessageToServer::toBytes, LabelEditedMessageToServer::new, LabelEditedMessageToServer::onServer);
+        registrar.play(LabelEditedMessageToServer.ID, LabelEditedMessageToServer::new, handler -> handler
+                .server(ServerPayloadHandler.getInstance()::handleLabel));
         // client ask server data needed to preview a deploy
-        wrapper.registerMessage(CAPSULE_CHANNEL_MESSAGE_ID++, CapsuleContentPreviewQueryToServer.class, CapsuleContentPreviewQueryToServer::toBytes, CapsuleContentPreviewQueryToServer::new, CapsuleContentPreviewQueryToServer::onServer);
+        registrar.play(CapsuleContentPreviewQueryToServer.ID, CapsuleContentPreviewQueryToServer::new, handler -> handler
+                .server(ServerPayloadHandler.getInstance()::handleContentPreviewQuery));
         // client ask server to throw item to a specific position
-        wrapper.registerMessage(CAPSULE_CHANNEL_MESSAGE_ID++, CapsuleThrowQueryToServer.class, CapsuleThrowQueryToServer::toBytes, CapsuleThrowQueryToServer::new, CapsuleThrowQueryToServer::onServer);
+        registrar.play(CapsuleThrowQueryToServer.ID, CapsuleThrowQueryToServer::new, handler -> handler
+                .server(ServerPayloadHandler.getInstance()::handleThrowQuery));
         // client ask server to reload the held blueprint capsule
-        wrapper.registerMessage(CAPSULE_CHANNEL_MESSAGE_ID++, CapsuleLeftClickQueryToServer.class, CapsuleLeftClickQueryToServer::toBytes, CapsuleLeftClickQueryToServer::new, CapsuleLeftClickQueryToServer::onServer);
+        registrar.play(CapsuleLeftClickQueryToServer.ID, CapsuleLeftClickQueryToServer::new, handler -> handler
+                .server(ServerPayloadHandler.getInstance()::handleLeftClickQuery));
+
         // server sends to client the data needed to preview a deploy
-        wrapper.registerMessage(CAPSULE_CHANNEL_MESSAGE_ID++, CapsuleContentPreviewAnswerToClient.class, CapsuleContentPreviewAnswerToClient::toBytes, CapsuleContentPreviewAnswerToClient::new, CapsuleContentPreviewAnswerToClient::onClient);
+        registrar.play(CapsuleContentPreviewAnswerToClient.ID, CapsuleContentPreviewAnswerToClient::new, handler -> handler
+                .client(ClientPayloadHandler.getInstance()::handleContentPreviewAnswer));
         // server sends to client the data needed to render undeploy
-        wrapper.registerMessage(CAPSULE_CHANNEL_MESSAGE_ID++, CapsuleUndeployNotifToClient.class, CapsuleUndeployNotifToClient::toBytes, CapsuleUndeployNotifToClient::new, CapsuleUndeployNotifToClient::onClient);
+        registrar.play(CapsuleUndeployNotifToClient.ID, CapsuleUndeployNotifToClient::new, handler -> handler
+                .client(ClientPayloadHandler.getInstance()::handleUndeployNotif));
         // server sends to client the full NBT for display
-        wrapper.registerMessage(CAPSULE_CHANNEL_MESSAGE_ID++, CapsuleFullContentAnswerToClient.class, CapsuleFullContentAnswerToClient::toBytes, CapsuleFullContentAnswerToClient::new, CapsuleFullContentAnswerToClient::onClient);
+        registrar.play(CapsuleFullContentAnswerToClient.ID, CapsuleFullContentAnswerToClient::new, handler -> handler
+                .client(ClientPayloadHandler.getInstance()::handleFullContentAnswer));
 
     }
 }

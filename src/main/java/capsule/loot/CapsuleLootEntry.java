@@ -12,11 +12,10 @@ import net.minecraft.world.level.storage.loot.entries.LootPoolEntries;
 import net.minecraft.world.level.storage.loot.entries.LootPoolEntryContainer;
 import net.minecraft.world.level.storage.loot.entries.LootPoolEntryType;
 import net.minecraft.world.level.storage.loot.entries.LootPoolSingletonContainer;
-import net.minecraft.world.level.storage.loot.functions.LootItemFunction;
-import net.minecraft.world.level.storage.loot.predicates.LootItemCondition;
 import org.apache.commons.lang3.tuple.Pair;
 
 import javax.annotation.Nullable;
+import java.util.ArrayList;
 import java.util.Random;
 import java.util.function.Consumer;
 
@@ -54,7 +53,7 @@ public class CapsuleLootEntry extends LootPoolSingletonContainer {
      * @param weightIn
      */
     protected CapsuleLootEntry(String templatesPath, int weightIn) {
-        super(weightIn, 0, new LootItemCondition[0], new LootItemFunction[0]);
+        super(weightIn, 0, new ArrayList<>(), new ArrayList<>());
         this.templatesPath = templatesPath;
     }
 

@@ -10,7 +10,12 @@ import capsule.structure.CapsuleTemplate;
 import capsule.tags.CapsuleTags;
 import com.google.common.collect.ImmutableList;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.*;
+import com.mojang.blaze3d.vertex.BufferBuilder;
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.Tesselator;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.mojang.blaze3d.vertex.VertexFormat;
 import joptsimple.internal.Strings;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
@@ -18,7 +23,7 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
-import net.minecraft.client.renderer.chunk.ChunkRenderDispatcher;
+import net.minecraft.client.renderer.chunk.SectionRenderDispatcher;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtIo;
@@ -31,12 +36,12 @@ import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlac
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.ClientChatEvent;
-import net.minecraftforge.client.event.RenderLevelStageEvent;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.neoforge.client.event.ClientChatEvent;
+import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
+import net.neoforged.neoforge.event.TickEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -47,10 +52,27 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.SimpleDateFormat;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
-import static capsule.client.RendererUtils.*;
-import static capsule.items.CapsuleItem.CapsuleState.*;
+import static capsule.client.RendererUtils.doOverlayEpilogue;
+import static capsule.client.RendererUtils.doOverlayPrologue;
+import static capsule.client.RendererUtils.doPositionEpilogue;
+import static capsule.client.RendererUtils.doPositionPrologue;
+import static capsule.client.RendererUtils.doWireEpilogue;
+import static capsule.client.RendererUtils.doWirePrologue;
+import static capsule.client.RendererUtils.drawCapsuleCube;
+import static capsule.client.RendererUtils.drawCube;
+import static capsule.client.RendererUtils.setColor;
+import static capsule.items.CapsuleItem.CapsuleState.ACTIVATED;
+import static capsule.items.CapsuleItem.CapsuleState.BLUEPRINT;
+import static capsule.items.CapsuleItem.CapsuleState.DEPLOYED;
+import static capsule.items.CapsuleItem.CapsuleState.EMPTY;
+import static capsule.items.CapsuleItem.CapsuleState.EMPTY_ACTIVATED;
+import static capsule.items.CapsuleItem.CapsuleState.ONE_USE_ACTIVATED;
 import static capsule.structure.CapsuleTemplate.recenterRotation;
 
 @Mod.EventBusSubscriber(modid = CapsuleMod.MODID, bus = Mod.EventBusSubscriber.Bus.FORGE, value = Dist.CLIENT)
@@ -69,7 +91,7 @@ public class CapsulePreviewHandler {
     private static String uncompletePreviewsCountStructure = null;
 
     static double time = 0;
-    public static ChunkRenderDispatcher dispatcher;
+    public static SectionRenderDispatcher dispatcher;
 
     public CapsulePreviewHandler() {
     }
@@ -83,7 +105,7 @@ public class CapsulePreviewHandler {
             Minecraft mc = Minecraft.getInstance();
             time += 1;
             if (mc.player != null) {
-                dispatcher = event.getLevelRenderer().getChunkRenderDispatcher();
+                dispatcher = event.getLevelRenderer().getSectionRenderDispatcher();
                 tryPreviewRecall(mc.player.getMainHandItem(), event.getPoseStack());
                 tryPreviewDeploy(mc.player, event.getPartialTick(), mc.player.getMainHandItem(), event.getPoseStack());
                 tryPreviewLinkedInventory(mc.player, mc.player.getMainHandItem(), event.getPoseStack());
@@ -253,11 +275,11 @@ public class CapsulePreviewHandler {
         } else if (CapsuleItem.hasState(heldItemMainhand, EMPTY)) {
             // (1/2) hack this renderer for specific case : capture of a 1-sized empty capsule
             BlockPos pos = rtc.getBlockPos().subtract(destOriginPos);
-            blockspos.add(new AABB(pos, pos));
+            blockspos.add(new AABB(pos));
         }
         if (blockspos.isEmpty()) {
             BlockPos pos = new BlockPos(extendSize, 0, extendSize);
-            blockspos.add(new AABB(pos, pos));
+            blockspos.add(new AABB(pos));
         }
 
         doPositionPrologue(Minecraft.getInstance().getEntityRenderDispatcher().camera, poseStack);

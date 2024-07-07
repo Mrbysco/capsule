@@ -1,63 +1,28 @@
 package capsule.network;
 
-import capsule.client.CapsulePreviewHandler;
-import capsule.helpers.Capsule;
-import net.minecraft.client.Minecraft;
+import capsule.CapsuleMod;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.util.StringUtil;
-import net.minecraftforge.network.NetworkEvent;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
 
-import java.util.function.Supplier;
-
-public class CapsuleUndeployNotifToClient {
-
-    protected static final Logger LOGGER = LogManager.getLogger(CapsuleUndeployNotifToClient.class);
-
-    public String templateName = null;
-    public BlockPos posFrom = null;
-    public BlockPos posTo = null;
-    public int size = 0;
-
-    public CapsuleUndeployNotifToClient(BlockPos posFrom, BlockPos posTo, int size, String templateName) {
-        this.posFrom = posFrom;
-        this.posTo = posTo;
-        this.size = size;
-        this.templateName = templateName;
-    }
-
-    public void onClient(Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            Capsule.showUndeployParticules(Minecraft.getInstance().level, posFrom, posTo, size);
-            if (!StringUtil.isNullOrEmpty(templateName)) {
-                // remove templates because they are dirty and must be redownloaded
-                CapsulePreviewHandler.currentPreview.remove(templateName);
-                CapsulePreviewHandler.currentFullPreview.remove(templateName);
-                // ask a preview refresh
-                CapsuleNetwork.wrapper.sendToServer(new CapsuleContentPreviewQueryToServer(templateName));
-            }
-        });
-        ctx.get().setPacketHandled(true);
-    }
+public record CapsuleUndeployNotifToClient(BlockPos posFrom, BlockPos posTo, int size, String templateName) implements CustomPacketPayload {
+    public static final ResourceLocation ID = new ResourceLocation(CapsuleMod.MODID, "undeploy_notif");
 
     public CapsuleUndeployNotifToClient(FriendlyByteBuf buf) {
-        try {
-            this.posFrom = buf.readBlockPos();
-            this.posTo = buf.readBlockPos();
-            this.size = buf.readShort();
-            this.templateName = buf.readUtf();
-        } catch (IndexOutOfBoundsException ioe) {
-            LOGGER.error("Exception while reading CapsuleUndeployNotifToClient: " + ioe);
-        }
+        this(buf.readBlockPos(), buf.readBlockPos(), buf.readShort(), buf.readUtf());
     }
 
-    public void toBytes(FriendlyByteBuf buf) {
+    public void write(FriendlyByteBuf buf) {
         buf.writeBlockPos(posFrom);
         buf.writeBlockPos(posTo);
         buf.writeShort(size);
         buf.writeUtf(templateName == null ? "" : templateName);
+    }
+
+    @Override
+    public ResourceLocation id() {
+        return ID;
     }
 
     @Override
