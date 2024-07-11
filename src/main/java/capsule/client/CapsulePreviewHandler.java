@@ -8,14 +8,10 @@ import capsule.helpers.Spacial;
 import capsule.items.CapsuleItem;
 import capsule.structure.CapsuleTemplate;
 import capsule.tags.CapsuleTags;
-import com.google.common.collect.ImmutableList;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.BufferBuilder;
-import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.Tesselator;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import com.mojang.blaze3d.vertex.VertexFormat;
 import joptsimple.internal.Strings;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
@@ -58,15 +54,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static capsule.client.RendererUtils.doOverlayEpilogue;
-import static capsule.client.RendererUtils.doOverlayPrologue;
-import static capsule.client.RendererUtils.doPositionEpilogue;
-import static capsule.client.RendererUtils.doPositionPrologue;
-import static capsule.client.RendererUtils.doWireEpilogue;
-import static capsule.client.RendererUtils.doWirePrologue;
-import static capsule.client.RendererUtils.drawCapsuleCube;
-import static capsule.client.RendererUtils.drawCube;
-import static capsule.client.RendererUtils.setColor;
+import static capsule.client.RendererUtils.*;
 import static capsule.items.CapsuleItem.CapsuleState.ACTIVATED;
 import static capsule.items.CapsuleItem.CapsuleState.BLUEPRINT;
 import static capsule.items.CapsuleItem.CapsuleState.DEPLOYED;
@@ -86,10 +74,6 @@ public class CapsulePreviewHandler {
     private static int lastSize = 0;
     private static int lastColor = 0;
 
-    private static int uncompletePreviewsCount = 0;
-    private static int completePreviewsCount = 0;
-    private static String uncompletePreviewsCountStructure = null;
-
     static double time = 0;
     public static SectionRenderDispatcher dispatcher;
 
@@ -101,7 +85,7 @@ public class CapsulePreviewHandler {
      */
     @SubscribeEvent
     public static void onLevelRenderLast(RenderLevelStageEvent event) {
-        if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_PARTICLES) {
+        if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS) {
             Minecraft mc = Minecraft.getInstance();
             time += 1;
             if (mc.player != null) {
@@ -196,14 +180,8 @@ public class CapsulePreviewHandler {
             BlockHitResult rtc = Spacial.clientRayTracePreview(thePlayer, partialTicks, size);
             if (rtc != null && rtc.getType() == HitResult.Type.BLOCK) {
                 int extendSize = (size - 1) / 2;
-                BlockPos destOriginPos = rtc.getBlockPos().offset(rtc.getDirection().getNormal()).offset(-extendSize, (int)(0.01 + CapsuleItem.getYOffset(heldItemMainhand)), -extendSize);
+                BlockPos destOriginPos = rtc.getBlockPos().offset(rtc.getDirection().getNormal()).offset(-extendSize, (int) (0.01 + CapsuleItem.getYOffset(heldItemMainhand)), -extendSize);
                 String structureName = heldItemMainhand.getTag().getString("structureName");
-
-                if (!structureName.equals(uncompletePreviewsCountStructure)) {
-                    uncompletePreviewsCountStructure = structureName;
-                    uncompletePreviewsCount = 0;
-                    completePreviewsCount = 0;
-                }
 
                 AABB errorBoundingBox = new AABB(
                         0,
@@ -264,10 +242,6 @@ public class CapsulePreviewHandler {
         poseStack.popPose();
     }
 
-    public static List<RenderType> getBlockRenderTypes() {
-        return ImmutableList.of(RenderType.translucent(), RenderType.cutout(), RenderType.cutoutMipped(), RenderType.solid());
-    }
-
     private static void DisplayWireframePreview(LocalPlayer thePlayer, ItemStack heldItemMainhand, int size, BlockHitResult rtc, int extendSize, BlockPos destOriginPos, String structureName, AABB errorBoundingBox, boolean haveFullPreview, PoseStack poseStack) {
         List<AABB> blockspos = new ArrayList<>();
         if (size > 1) {
@@ -283,9 +257,6 @@ public class CapsulePreviewHandler {
         }
 
         doPositionPrologue(Minecraft.getInstance().getEntityRenderDispatcher().camera, poseStack);
-        doWirePrologue();
-        Tesselator tessellator = Tesselator.getInstance();
-        BufferBuilder bufferBuilder = tessellator.getBuilder();
 
         StructurePlaceSettings placement = CapsuleItem.getPlacement(heldItemMainhand);
 
@@ -302,34 +273,41 @@ public class CapsulePreviewHandler {
                 RenderSystem.lineWidth(haveFullPreview ? 2.0F : 5.0F);
                 color = CapsuleItem.getBaseColor(heldItemMainhand);
             } else {
+                RenderSystem.disableDepthTest();
+                RenderSystem.enableBlend();
+                RenderSystem.defaultBlendFunc();
                 for (double j = dest.minZ; j < dest.maxZ; ++j) {
                     for (double k = dest.minY; k < dest.maxY; ++k) {
                         for (double l = dest.minX; l < dest.maxX; ++l) {
                             BlockPos pos = BlockPos.containing(l, k, j);
                             if (!thePlayer.getCommandSenderWorld().getBlockState(pos).is(CapsuleTags.overridable)) {
-                                RenderSystem.lineWidth(5.0F);
-                                bufferBuilder.begin(VertexFormat.Mode.LINE_STRIP, DefaultVertexFormat.POSITION);
-                                setColor(0xaa0000, 255);
-                                drawCapsuleCube(errorBoundingBox.move(pos), bufferBuilder);
-                                tessellator.end();
+                                MultiBufferSource.BufferSource bufferSource = MultiBufferSource.immediate(Tesselator.getInstance().getBuilder());
+                                VertexConsumer buffer = bufferSource.getBuffer(RenderType.lines());
+                                LevelRenderer.renderLineBox(poseStack, buffer, errorBoundingBox.move(pos), 0.8f, 0, 0, 1);
+                                LevelRenderer.renderLineBox(poseStack, buffer, errorBoundingBox.inflate(0.005).move(pos), 0.8f, 0, 0, 1);
+                                LevelRenderer.renderLineBox(poseStack, buffer, errorBoundingBox.deflate(0.005).move(pos), 0.8f, 0, 0, 1);
+                                bufferSource.endBatch(RenderType.lines());
                             }
                         }
                     }
                 }
+                RenderSystem.enableDepthTest();
             }
 
             if (!haveFullPreview) {
                 RenderSystem.lineWidth(1);
                 RenderSystem.enableBlend();
-                bufferBuilder.begin(VertexFormat.Mode.LINE_STRIP, DefaultVertexFormat.POSITION);
-                setColor(color, 160);
-                drawCapsuleCube(dest, bufferBuilder);
-                tessellator.end();
+                final int r = (color >> 16) & 0xFF;
+                final int g = (color >> 8) & 0xFF;
+                final int b = color & 0xFF;
+                MultiBufferSource.BufferSource bufferSource = MultiBufferSource.immediate(Tesselator.getInstance().getBuilder());
+                VertexConsumer buffer = bufferSource.getBuffer(RenderType.lines());
+                LevelRenderer.renderLineBox(poseStack, buffer, dest, r / 255f, g / 255f, b / 255f, 1);
+                bufferSource.endBatch(RenderType.lines());
             }
         }
 
-        setColor(0xFFFFFF, 255);
-        doWireEpilogue();
+//        doWireEpilogue();
         doPositionEpilogue(poseStack);
     }
 
@@ -374,18 +352,15 @@ public class CapsulePreviewHandler {
     }
 
     private static void previewLinkedInventory(BlockPos location, PoseStack poseStack) {
-        doPositionPrologue(Minecraft.getInstance().getEntityRenderDispatcher().camera, poseStack);
-        doOverlayPrologue();
+        Camera cam = Minecraft.getInstance().getEntityRenderDispatcher().camera;
+        MultiBufferSource.BufferSource bufferSource = MultiBufferSource.immediate(Tesselator.getInstance().getBuilder());
+        VertexConsumer buffer = bufferSource.getBuffer(RenderType.debugQuads());
+        poseStack.pushPose();
+        poseStack.translate(-cam.getPosition().x, -cam.getPosition().y, -cam.getPosition().z);
+        drawCube(poseStack, location, 0.01f, buffer, 91, 156, 255, 80);
+        bufferSource.endBatch();
 
-        Tesselator tessellator = Tesselator.getInstance();
-        BufferBuilder bufferBuilder = tessellator.getBuilder();
-        bufferBuilder.begin(VertexFormat.Mode.LINE_STRIP, DefaultVertexFormat.POSITION);
-        setColor(0x5B9CFF, 80);
-        drawCube(location, 0, bufferBuilder);
-        tessellator.end();
-
-        doOverlayEpilogue();
-        doPositionEpilogue(poseStack);
+        poseStack.popPose();
     }
 
     private static void previewRecall(ItemStack capsule, PoseStack poseStack) {
@@ -396,17 +371,17 @@ public class CapsulePreviewHandler {
         int extendSize = (size - 1) / 2;
         int color = CapsuleItem.getBaseColor(capsule);
 
-        Camera renderInfo = Minecraft.getInstance().getEntityRenderDispatcher().camera;
+        Camera cam = Minecraft.getInstance().getEntityRenderDispatcher().camera;
         AABB boundingBox = Spacial.getBB(linkPos.getInt("x") + extendSize, linkPos.getInt("y") - 1, linkPos.getInt("z") + extendSize, size, extendSize);
         MultiBufferSource.BufferSource impl = MultiBufferSource.immediate(Tesselator.getInstance().getBuilder());
         VertexConsumer ivertexbuilder = impl.getBuffer(RenderType.lines());
         poseStack.pushPose();
-        poseStack.translate(-renderInfo.getPosition().x, -renderInfo.getPosition().y, -renderInfo.getPosition().z);
+        poseStack.translate(-cam.getPosition().x, -cam.getPosition().y, -cam.getPosition().z);
 
         renderRecallBox(poseStack, color, boundingBox, ivertexbuilder, time);
         impl.endBatch();
 
-        poseStack.pushPose();
+        poseStack.popPose();
     }
 
     private static void setCaptureTESizeColor(int size, int color, Level worldIn) {
