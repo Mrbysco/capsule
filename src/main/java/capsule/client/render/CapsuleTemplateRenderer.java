@@ -11,7 +11,6 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.block.LiquidBlockRenderer;
 import net.minecraft.client.renderer.block.ModelBlockRenderer;
-import net.minecraft.client.renderer.block.model.BakedQuad;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.resources.model.BakedModel;
@@ -55,7 +54,6 @@ public class CapsuleTemplateRenderer {
     private boolean isWorldDirty = true;
     private StructurePlaceSettings lastPlacementSettings;
     private ModelBlockRenderer blockRenderer = Minecraft.getInstance().getBlockRenderer().getModelRenderer();
-    private LiquidBlockRenderer liquidBlockRenderer = new LiquidBlockRenderer();
     private final RandomSource random = RandomSource.create();
 
     public void renderTemplate(PoseStack poseStack, Player player, BlockPos destPos) {
@@ -73,58 +71,10 @@ public class CapsuleTemplateRenderer {
         poseStack.popPose();
     }
 
-//    public void renderTemplate(PoseStack poseStack, Vec3 cameraView, Player player) {
-//        if (renderBuffer != null) {
-//            renderBuffer.render(poseStack.last().pose()); //Actually draw whats in the buffer
-//            return;
-//        }
-//
-//        Minecraft minecraft = Minecraft.getInstance();
-//        renderBuffer = MultiVBORenderer.of((buffer) -> {
-//            VertexConsumer builder = buffer.getBuffer(CustomRenderType.VISUAL_BLOCK);
-//            MultiBufferSource.BufferSource bufferSource = minecraft.renderBuffers().bufferSource();
-//            var dispatcher = minecraft.getBlockRenderer();
-//
-//            PoseStack stack = new PoseStack(); //Create a new matrix stack for use in the buffer building process
-//            stack.pushPose(); //Save position
-//
-//            for (Map.Entry<BlockPos, BlockState> entry : templateWorld.entrySet()) {
-//                BlockPos targetPos = entry.getKey();
-//                BlockState state = entry.getValue();
-//
-//                stack.pushPose(); //Save position again
-//                stack.translate(targetPos.getX(), targetPos.getY(), targetPos.getZ());
-//
-//                BakedModel ibakedmodel = dispatcher.getBlockModel(state);
-//                try {
-//                    if (state.getRenderShape() == RenderShape.MODEL || state.getRenderShape() == RenderShape.ENTITYBLOCK_ANIMATED) {
-//                        blockRenderer.tesselateWithAO(templateWorld, ibakedmodel, state, targetPos, poseStack, builder, true, new Random(Mth.getSeed(targetPos)), Mth.getSeed(targetPos), OverlayTexture.NO_OVERLAY, net.minecraftforge.client.model.data.EmptyModelData.INSTANCE);
-//                    } else {
-//                        FluidState ifluidstate = state.getFluidState();
-//                        if (!ifluidstate.isEmpty()) {
-//                            liquidBlockRenderer.tesselate(templateWorld, targetPos, builder, state, ifluidstate);
-//                        }
-//                    }
-//                } catch (Exception e) {
-//                    LOGGER.trace("Caught exception whilst rendering {}.", state, e);
-//                }
-//                stack.popPose(); // Load the position we saved earlier
-//            }
-//            stack.popPose(); //Load after loop
-//        });
-//
-//        // renderBuffer.sort((float) (-destPos.getX() + cameraView.x()), (float) (-destPos.getY() + cameraView.y()), (float) (-destPos.getZ() + cameraView.z()));
-//        renderBuffer.render(poseStack.last().pose()); //Actually draw whats in the buffer
-//    }
-
     public void renderTemplate(PoseStack poseStack, Vec3 cameraView, Player player) {
         Minecraft minecraft = Minecraft.getInstance();
         MultiBufferSource.BufferSource bufferSource = minecraft.renderBuffers().bufferSource();
         VertexConsumer bufferSolid = bufferSource.getBuffer(CustomRenderType.VISUAL_BLOCK);
-//        VertexConsumer bufferSolid = bufferSource.getBuffer(RenderType.cutoutMipped());
-
-        // PoseStack stack = new PoseStack(); //Create a new matrix stack for use in the bufferSolid building process
-        //stack.pushPose(); //Save position
 
         for (Map.Entry<BlockPos, BlockState> entry : templateWorld.entrySet()) {
             BlockPos targetPos = entry.getKey();
@@ -140,7 +90,6 @@ public class CapsuleTemplateRenderer {
                 } else {
                     FluidState ifluidstate = state.getFluidState();
                     if (!ifluidstate.isEmpty()) {
-//                        liquidBlockRenderer.tesselate(templateWorld, targetPos, bufferSolid, state, ifluidstate);
                         renderFluid(poseStack, targetPos, templateWorld, bufferSolid, ifluidstate);
                     }
                 }
@@ -150,7 +99,6 @@ public class CapsuleTemplateRenderer {
             poseStack.popPose(); // Load the position we saved earlier
 
         }
-        //stack.popPose(); //Load after loop
     }
 
     private static void renderFluid(PoseStack matrixStack, BlockPos destOriginPos, BlockAndTintGetter world, VertexConsumer buffer, FluidState ifluidstate) {
@@ -176,28 +124,6 @@ public class CapsuleTemplateRenderer {
     private static void vertex(VertexConsumer buffer, float maxU, float minV, float red, float green,
                                float blue, Matrix4f matrix, int x, int y, int z) {
         buffer.vertex(matrix, x, y, z).color(red, green, blue, 1.0F).uv(maxU, minV).uv2(256).normal(0.0F, 1.0F, 0.0F).endVertex();
-    }
-
-    public static void renderModelBrightnessColorQuads(PoseStack.Pose matrixEntry, VertexConsumer builder,
-                                                       float red, float green, float blue, float alpha, List<BakedQuad> listQuads, int combinedLightsIn,
-                                                       int combinedOverlayIn) {
-        for (BakedQuad bakedquad : listQuads) {
-            float f;
-            float f1;
-            float f2;
-
-            if (bakedquad.isTinted()) {
-                f = red;
-                f1 = green;
-                f2 = blue;
-            } else {
-                f = 1f;
-                f1 = 1f;
-                f2 = 1f;
-            }
-
-            builder.putBulkData(matrixEntry, bakedquad, f, f1, f2, alpha, combinedLightsIn, combinedOverlayIn, false);
-        }
     }
 
     public boolean changeTemplateIfDirty(CapsuleTemplate template, Level world, BlockPos destPos, BlockPos
