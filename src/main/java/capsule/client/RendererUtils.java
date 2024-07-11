@@ -46,71 +46,90 @@ public class RendererUtils {
 
     }
 
-    public static void drawCube(final BlockPos pos, final float sizeOffset, final VertexConsumer buffer) {
-        drawCube(pos.getX() - sizeOffset, pos.getY() - sizeOffset, pos.getZ() - sizeOffset, pos.getX() + 1 + sizeOffset, pos.getY() + 1 + sizeOffset, pos.getZ() + 1 + sizeOffset, buffer);
+    public static void drawCube(final BlockPos pos, final float sizeOffset, final VertexConsumer buffer, int r, int g, int b, int a) {
+        drawCube(pos.getX() - sizeOffset, pos.getY() - sizeOffset, pos.getZ() - sizeOffset,
+                pos.getX() + 1 + sizeOffset, pos.getY() + 1 + sizeOffset, pos.getZ() + 1 + sizeOffset,
+                buffer, r, g, b, a);
     }
 
-    public static void drawCube(final double minX, final double minY, final double minZ, final double maxX, final double maxY, final double maxZ, final VertexConsumer buffer) {
-        drawPlaneNegX(minX, minY, maxY, minZ, maxZ, buffer);
-        drawPlanePosX(maxX, minY, maxY, minZ, maxZ, buffer);
-        drawPlaneNegY(minY, minX, maxX, minZ, maxZ, buffer);
-        drawPlanePosY(maxY, minX, maxX, minZ, maxZ, buffer);
-        drawPlaneNegZ(minZ, minX, maxX, minY, maxY, buffer);
-        drawPlanePosZ(maxZ, minX, maxX, minY, maxY, buffer);
+    public static void drawCube(final double minX, final double minY, final double minZ,
+                                final double maxX, final double maxY, final double maxZ,
+                                final VertexConsumer buffer, int r, int g, int b, int a) {
+        drawPlaneNegX(minX, minY, maxY, minZ, maxZ, buffer, r, g, b, a);
+        drawPlanePosX(maxX, minY, maxY, minZ, maxZ, buffer, r, g, b, a);
+        drawPlaneNegY(minY, minX, maxX, minZ, maxZ, buffer, r, g, b, a);
+        drawPlanePosY(maxY, minX, maxX, minZ, maxZ, buffer, r, g, b, a);
+        drawPlaneNegZ(minZ, minX, maxX, minY, maxY, buffer, r, g, b, a);
+        drawPlanePosZ(maxZ, minX, maxX, minY, maxY, buffer, r, g, b, a);
     }
 
-    public static void drawPlaneNegX(final double x, final double minY, final double maxY, final double minZ, final double maxZ, final VertexConsumer buffer) {
-        buffer.vertex(x, minY, minZ).endVertex();
-        buffer.vertex(x, minY, maxZ).endVertex();
-        buffer.vertex(x, maxY, maxZ).endVertex();
-        buffer.vertex(x, maxY, minZ).endVertex();
+    public static void drawPlaneNegX(final double x, final double minY, final double maxY,
+                                     final double minZ, final double maxZ, final VertexConsumer buffer,
+                                     int r, int g, int b, int a) {
+        buffer.vertex(x, minY, minZ).color(r, g, b, a).normal(-1, 0, 0).endVertex();
+        buffer.vertex(x, minY, maxZ).color(r, g, b, a).normal(-1, 0, 0).endVertex();
+        buffer.vertex(x, maxY, maxZ).color(r, g, b, a).normal(-1, 0, 0).endVertex();
+        buffer.vertex(x, maxY, minZ).color(r, g, b, a).normal(-1, 0, 0).endVertex();
     }
 
-    public static void drawPlanePosX(final double x, final double minY, final double maxY, final double minZ, final double maxZ, final VertexConsumer buffer) {
-        buffer.vertex(x, minY, minZ).endVertex();
-        buffer.vertex(x, maxY, minZ).endVertex();
-        buffer.vertex(x, maxY, maxZ).endVertex();
-        buffer.vertex(x, minY, maxZ).endVertex();
+    public static void drawPlanePosX(final double x, final double minY, final double maxY,
+                                     final double minZ, final double maxZ, final VertexConsumer buffer,
+                                     int r, int g, int b, int a) {
+        buffer.vertex(x, minY, minZ).color(r, g, b, a).normal(1, 0, 0).endVertex();
+        buffer.vertex(x, maxY, minZ).color(r, g, b, a).normal(1, 0, 0).endVertex();
+        buffer.vertex(x, maxY, maxZ).color(r, g, b, a).normal(1, 0, 0).endVertex();
+        buffer.vertex(x, minY, maxZ).color(r, g, b, a).normal(1, 0, 0).endVertex();
     }
 
-    public static void drawPlaneNegY(final double y, final double minX, final double maxX, final double minZ, final double maxZ, final VertexConsumer buffer) {
-        buffer.vertex(minX, y, minZ).endVertex();
-        buffer.vertex(maxX, y, minZ).endVertex();
-        buffer.vertex(maxX, y, maxZ).endVertex();
-        buffer.vertex(minX, y, maxZ).endVertex();
+    public static void drawPlaneNegY(final double y, final double minX, final double maxX,
+                                     final double minZ, final double maxZ, final VertexConsumer buffer,
+                                     int r, int g, int b, int a) {
+        buffer.vertex(minX, y, minZ).color(r, g, b, a).normal(0, -1, 0).endVertex();
+        buffer.vertex(maxX, y, minZ).color(r, g, b, a).normal(0, -1, 0).endVertex();
+        buffer.vertex(maxX, y, maxZ).color(r, g, b, a).normal(0, -1, 0).endVertex();
+        buffer.vertex(minX, y, maxZ).color(r, g, b, a).normal(0, -1, 0).endVertex();
     }
 
-    public static void drawPlanePosY(final double y, final double minX, final double maxX, final double minZ, final double maxZ, final VertexConsumer buffer) {
-        buffer.vertex(minX, y, minZ).endVertex();
-        buffer.vertex(minX, y, maxZ).endVertex();
-        buffer.vertex(maxX, y, maxZ).endVertex();
-        buffer.vertex(maxX, y, minZ).endVertex();
+    public static void drawPlanePosY(final double y, final double minX, final double maxX,
+                                     final double minZ, final double maxZ, final VertexConsumer buffer,
+                                     int r, int g, int b, int a) {
+        buffer.vertex(minX, y, minZ).color(r, g, b, a).normal(0, 1, 0).endVertex();
+        buffer.vertex(minX, y, maxZ).color(r, g, b, a).normal(0, 1, 0).endVertex();
+        buffer.vertex(maxX, y, maxZ).color(r, g, b, a).normal(0, 1, 0).endVertex();
+        buffer.vertex(maxX, y, minZ).color(r, g, b, a).normal(0, 1, 0).endVertex();
     }
 
-    public static void drawPlaneNegZ(final double z, final double minX, final double maxX, final double minY, final double maxY, final VertexConsumer buffer) {
-        buffer.vertex(minX, minY, z).endVertex();
-        buffer.vertex(minX, maxY, z).endVertex();
-        buffer.vertex(maxX, maxY, z).endVertex();
-        buffer.vertex(maxX, minY, z).endVertex();
+    public static void drawPlaneNegZ(final double z, final double minX, final double maxX,
+                                     final double minY, final double maxY, final VertexConsumer buffer,
+                                     int r, int g, int b, int a) {
+        buffer.vertex(minX, minY, z).color(r, g, b, a).normal(0, 0, -1).endVertex();
+        buffer.vertex(minX, maxY, z).color(r, g, b, a).normal(0, 0, -1).endVertex();
+        buffer.vertex(maxX, maxY, z).color(r, g, b, a).normal(0, 0, -1).endVertex();
+        buffer.vertex(maxX, minY, z).color(r, g, b, a).normal(0, 0, -1).endVertex();
     }
 
-    public static void drawPlanePosZ(final double z, final double minX, final double maxX, final double minY, final double maxY, final VertexConsumer buffer) {
-        buffer.vertex(minX, minY, z).endVertex();
-        buffer.vertex(maxX, minY, z).endVertex();
-        buffer.vertex(maxX, maxY, z).endVertex();
-        buffer.vertex(minX, maxY, z).endVertex();
+    public static void drawPlanePosZ(final double z, final double minX, final double maxX,
+                                     final double minY, final double maxY, final VertexConsumer buffer,
+                                     int r, int g, int b, int a) {
+        buffer.vertex(minX, minY, z).color(r, g, b, a).normal(0, 0, 1).endVertex();
+        buffer.vertex(maxX, minY, z).color(r, g, b, a).normal(0, 0, 1).endVertex();
+        buffer.vertex(maxX, maxY, z).color(r, g, b, a).normal(0, 0, 1).endVertex();
+        buffer.vertex(minX, maxY, z).color(r, g, b, a).normal(0, 0, 1).endVertex();
     }
 
-    public static void drawCapsuleCube(AABB boundingBox, BufferBuilder bufferBuilder) {
-        drawPlaneNegX(boundingBox.minX, boundingBox.minY, boundingBox.maxY, boundingBox.minZ, boundingBox.maxZ, bufferBuilder);
-        drawPlanePosX(boundingBox.maxX, boundingBox.minY, boundingBox.maxY, boundingBox.minZ, boundingBox.maxZ, bufferBuilder);
-        drawPlaneNegY(boundingBox.minY, boundingBox.minX, boundingBox.maxX, boundingBox.minZ, boundingBox.maxZ, bufferBuilder);
-        drawPlanePosY(boundingBox.maxY, boundingBox.minX, boundingBox.maxX, boundingBox.minZ, boundingBox.maxZ, bufferBuilder);
-        drawPlaneNegZ(boundingBox.minZ, boundingBox.minX, boundingBox.maxX, boundingBox.minY, boundingBox.maxY, bufferBuilder);
-        drawPlanePosZ(boundingBox.maxZ, boundingBox.minX, boundingBox.maxX, boundingBox.minY, boundingBox.maxY, bufferBuilder);
+    public static void drawCapsuleCube(AABB boundingBox, VertexConsumer bufferBuilder, int r, int g, int b, int a) {
+        drawPlaneNegX(boundingBox.minX, boundingBox.minY, boundingBox.maxY, boundingBox.minZ, boundingBox.maxZ, bufferBuilder, r, g, b, a);
+        drawPlanePosX(boundingBox.maxX, boundingBox.minY, boundingBox.maxY, boundingBox.minZ, boundingBox.maxZ, bufferBuilder, r, g, b, a);
+        drawPlaneNegY(boundingBox.minY, boundingBox.minX, boundingBox.maxX, boundingBox.minZ, boundingBox.maxZ, bufferBuilder, r, g, b, a);
+        drawPlanePosY(boundingBox.maxY, boundingBox.minX, boundingBox.maxX, boundingBox.minZ, boundingBox.maxZ, bufferBuilder, r, g, b, a);
+        drawPlaneNegZ(boundingBox.minZ, boundingBox.minX, boundingBox.maxX, boundingBox.minY, boundingBox.maxY, bufferBuilder, r, g, b, a);
+        drawPlanePosZ(boundingBox.maxZ, boundingBox.minX, boundingBox.maxX, boundingBox.minY, boundingBox.maxY, bufferBuilder, r, g, b, a);
     }
 
-    public static void setColor(final int rgb, final int alpha) {
+    public static float[] prevColor = new float[4];
+
+    public static void pushColor(final int rgb, final int alpha) {
+        prevColor = RenderSystem.getShaderColor();
         final int r = (rgb >> 16) & 0xFF;
         final int g = (rgb >> 8) & 0xFF;
         final int b = rgb & 0xFF;
@@ -119,7 +138,11 @@ public class RendererUtils {
         final float rf = r / 255f;
         final float gf = g / 255f;
         final float bf = b / 255f;
-
         RenderSystem.setShaderColor(rf, gf, bf, af);
+    }
+
+    public static void popColor() {
+        if (prevColor != null && prevColor.length == 4)
+            RenderSystem.setShaderColor(prevColor[0], prevColor[1], prevColor[2], prevColor[3]);
     }
 }
