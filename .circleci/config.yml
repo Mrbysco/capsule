@@ -32,7 +32,7 @@ jobs:
       - run: rm -rf build/libs
       - run: chmod +x ./gradlew
       - run: sed -i "s/BUILD_ID/${CIRCLE_BUILD_NUM}/g" build.gradle
-      - run: ./gradlew build
+      - run: ./gradlew build --stacktrace --info
 
       - save_cache:
           paths:
