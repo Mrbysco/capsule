@@ -59,12 +59,12 @@ public class CapsulePlugin implements IModPlugin {
                 ItemStack capsuleUp = CapsuleItems.getUpgradedCapsule(capsule, upLevel);
                 NonNullList<Ingredient> ingredients = NonNullList.withSize(upLevel + 1, upgradeIngredient);
                 ingredients.set(0, Ingredient.of(capsule));
-                recipes.add(new RecipeHolder<>(new ResourceLocation(CapsuleMod.MODID, "capsule_" + BuiltInRegistries.ITEM.getKey(capsule.getItem())),
-                        new ShapelessRecipe("capsule", CraftingBookCategory.MISC, capsuleUp, ingredients)));
+                ResourceLocation id = BuiltInRegistries.ITEM.getKey(capsule.getItem());
+                recipes.add(new RecipeHolder<>(id, new ShapelessRecipe("capsule", CraftingBookCategory.MISC, capsuleUp, ingredients)));
             }
             // clear
             recipes.add(new RecipeHolder<>(new ResourceLocation(CapsuleMod.MODID, "capsule_clear"),
-                    new ShapelessRecipe( "capsule", CraftingBookCategory.MISC, capsule, NonNullList.of(Ingredient.EMPTY, Ingredient.of(CapsuleItems.getUnlabelledCapsule(capsule))))));
+                    new ShapelessRecipe("capsule", CraftingBookCategory.MISC, capsule, NonNullList.of(Ingredient.EMPTY, Ingredient.of(CapsuleItems.getUnlabelledCapsule(capsule))))));
         }
 
         if (CapsuleItems.recoveryCapsule == null ||
@@ -84,10 +84,12 @@ public class CapsulePlugin implements IModPlugin {
         // recovery
         recipes.add(new RecipeHolder<>(new ResourceLocation(CapsuleMod.MODID, "recovery_capsule"), CapsuleItems.recoveryCapsule.getValue()));
         for (Pair<ItemStack, CraftingRecipe> r : CapsuleItems.blueprintCapsules) {
-            recipes.add(new RecipeHolder<>(new ResourceLocation(CapsuleMod.MODID, "blueprint_capsule_" + BuiltInRegistries.ITEM.getKey(r.getKey().getItem())), r.getValue()));
+            ResourceLocation blueprintId = BuiltInRegistries.ITEM.getKey(r.getKey().getItem());
+            recipes.add(new RecipeHolder<>(blueprintId, r.getValue()));
         }
         for (Pair<ItemStack, CraftingRecipe> r : CapsuleItems.blueprintPrefabs) {
-            recipes.add(new RecipeHolder<>(new ResourceLocation(CapsuleMod.MODID, "blueprint_prefab_" + BuiltInRegistries.ITEM.getKey(r.getKey().getItem())), r.getValue()));
+            ResourceLocation prefabId = BuiltInRegistries.ITEM.getKey(r.getKey().getItem());
+            recipes.add(new RecipeHolder<>(prefabId, r.getValue()));
         }
         ItemStack withNewTemplate = CapsuleItems.blueprintChangedCapsule.getKey();
         CapsuleItem.setStructureName(withNewTemplate, "newTemplate");
