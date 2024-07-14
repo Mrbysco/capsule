@@ -36,6 +36,7 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.neoforge.client.event.ClientChatEvent;
+import net.neoforged.neoforge.client.event.ClientChatReceivedEvent;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 import net.neoforged.neoforge.event.TickEvent;
 import org.apache.logging.log4j.LogManager;
@@ -101,8 +102,8 @@ public class CapsulePreviewHandler {
      * try to spot a templateDownload command for client
      */
     @SubscribeEvent
-    public static void OnClientChatEvent(ClientChatEvent event) {
-        if ("/capsule downloadTemplate".equals(event.getMessage())) {
+    public static void OnClientChatEvent(ClientChatReceivedEvent event) {
+        if ("Getting template of currently held capsule…".equals(event.getMessage().getString())) {
             Minecraft mc = Minecraft.getInstance();
             if (mc.player != null) {
                 ItemStack heldItem = mc.player.getMainHandItem();
