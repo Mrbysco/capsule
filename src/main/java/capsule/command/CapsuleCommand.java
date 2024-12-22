@@ -75,7 +75,7 @@ import static net.minecraft.commands.arguments.EntityArgument.player;
  * @author Lythom
  */
 public class CapsuleCommand {
-    private static final DynamicCommandExceptionType ERROR_NO_ACTION_PERFORMED = new DynamicCommandExceptionType(p_311534_ -> (Component)p_311534_);
+    private static final DynamicCommandExceptionType ERROR_NO_ACTION_PERFORMED = new DynamicCommandExceptionType(p_311534_ -> (Component) p_311534_);
 
     public static List<ServerPlayer> sentUsageURL = new ArrayList<>();
 
@@ -279,7 +279,11 @@ public class CapsuleCommand {
         dispatcher.register(capsuleCommand);
     }
 
-    private static int executeDownloadTemplate(ServerPlayer getPlayerOrException) {
+    private static int executeDownloadTemplate(ServerPlayer player) {
+        if (player != null) {
+            MutableComponent msg = Component.literal("Getting template of currently held capsule…");
+            player.sendSystemMessage(msg);
+        }
         return 0;
     }
 

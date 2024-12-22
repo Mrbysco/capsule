@@ -1,19 +1,20 @@
 package capsule.client;
 
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.BufferBuilder;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import com.mojang.math.Axis;
 import net.minecraft.client.Camera;
+import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.phys.AABB;
+import org.joml.Matrix3f;
+import org.joml.Matrix4f;
 
 public class RendererUtils {
     public static void doPositionPrologue(Camera camera, PoseStack poseStack) {
         poseStack.pushPose();
-        poseStack.mulPose(Axis.XP.rotationDegrees(camera.getXRot()));
-        poseStack.mulPose(Axis.YP.rotationDegrees(camera.getYRot() + 180.0F));
+        //poseStack.mulPose(Axis.XP.rotationDegrees(camera.getXRot()));
+        //poseStack.mulPose(Axis.YP.rotationDegrees(camera.getYRot() + 180.0F));
         poseStack.translate(-camera.getPosition().x, -camera.getPosition().y, -camera.getPosition().z);
     }
 
@@ -25,6 +26,8 @@ public class RendererUtils {
 //        RenderSystem.disableTexture();
         RenderSystem.disableDepthTest();
         RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.setShader(GameRenderer::getPositionColorShader);
     }
 
     public static void doOverlayEpilogue() {
@@ -46,71 +49,102 @@ public class RendererUtils {
 
     }
 
-    public static void drawCube(final BlockPos pos, final float sizeOffset, final VertexConsumer buffer) {
-        drawCube(pos.getX() - sizeOffset, pos.getY() - sizeOffset, pos.getZ() - sizeOffset, pos.getX() + 1 + sizeOffset, pos.getY() + 1 + sizeOffset, pos.getZ() + 1 + sizeOffset, buffer);
+    public static void drawCube(PoseStack poseStack, final BlockPos pos, final float sizeOffset, final VertexConsumer buffer, int r, int g, int b, int a) {
+        drawCube(poseStack, pos.getX() - sizeOffset, pos.getY() - sizeOffset, pos.getZ() - sizeOffset,
+                pos.getX() + 1 + sizeOffset, pos.getY() + 1 + sizeOffset, pos.getZ() + 1 + sizeOffset,
+                buffer, r, g, b, a);
     }
 
-    public static void drawCube(final double minX, final double minY, final double minZ, final double maxX, final double maxY, final double maxZ, final VertexConsumer buffer) {
-        drawPlaneNegX(minX, minY, maxY, minZ, maxZ, buffer);
-        drawPlanePosX(maxX, minY, maxY, minZ, maxZ, buffer);
-        drawPlaneNegY(minY, minX, maxX, minZ, maxZ, buffer);
-        drawPlanePosY(maxY, minX, maxX, minZ, maxZ, buffer);
-        drawPlaneNegZ(minZ, minX, maxX, minY, maxY, buffer);
-        drawPlanePosZ(maxZ, minX, maxX, minY, maxY, buffer);
+    public static void drawCube(PoseStack poseStack, final float minX, final float minY, final float minZ,
+                                final float maxX, final float maxY, final float maxZ,
+                                final VertexConsumer buffer, int r, int g, int b, int a) {
+        drawPlaneNegX(poseStack, minX, minY, maxY, minZ, maxZ, buffer, r, g, b, a);
+        drawPlanePosX(poseStack, maxX, minY, maxY, minZ, maxZ, buffer, r, g, b, a);
+        drawPlaneNegY(poseStack, minY, minX, maxX, minZ, maxZ, buffer, r, g, b, a);
+        drawPlanePosY(poseStack, maxY, minX, maxX, minZ, maxZ, buffer, r, g, b, a);
+        drawPlaneNegZ(poseStack, minZ, minX, maxX, minY, maxY, buffer, r, g, b, a);
+        drawPlanePosZ(poseStack, maxZ, minX, maxX, minY, maxY, buffer, r, g, b, a);
     }
 
-    public static void drawPlaneNegX(final double x, final double minY, final double maxY, final double minZ, final double maxZ, final VertexConsumer buffer) {
-        buffer.vertex(x, minY, minZ).endVertex();
-        buffer.vertex(x, minY, maxZ).endVertex();
-        buffer.vertex(x, maxY, maxZ).endVertex();
-        buffer.vertex(x, maxY, minZ).endVertex();
+    public static void drawPlaneNegX(PoseStack poseStack, final float x, final float minY, final float maxY,
+                                     final float minZ, final float maxZ, final VertexConsumer buffer,
+                                     int r, int g, int b, int a) {
+        Matrix4f matrix4f = poseStack.last().pose();
+        Matrix3f matrix3f = poseStack.last().normal();
+        buffer.vertex(matrix4f, x, minY, minZ).color(r, g, b, a).normal(matrix3f, -1, 0, 0).endVertex();
+        buffer.vertex(matrix4f, x, minY, maxZ).color(r, g, b, a).normal(matrix3f, -1, 0, 0).endVertex();
+        buffer.vertex(matrix4f, x, maxY, maxZ).color(r, g, b, a).normal(matrix3f, -1, 0, 0).endVertex();
+        buffer.vertex(matrix4f, x, maxY, minZ).color(r, g, b, a).normal(matrix3f, -1, 0, 0).endVertex();
     }
 
-    public static void drawPlanePosX(final double x, final double minY, final double maxY, final double minZ, final double maxZ, final VertexConsumer buffer) {
-        buffer.vertex(x, minY, minZ).endVertex();
-        buffer.vertex(x, maxY, minZ).endVertex();
-        buffer.vertex(x, maxY, maxZ).endVertex();
-        buffer.vertex(x, minY, maxZ).endVertex();
+    public static void drawPlanePosX(PoseStack poseStack, final float x, final float minY, final float maxY,
+                                     final float minZ, final float maxZ, final VertexConsumer buffer,
+                                     int r, int g, int b, int a) {
+        Matrix4f matrix4f = poseStack.last().pose();
+        Matrix3f matrix3f = poseStack.last().normal();
+        buffer.vertex(matrix4f, x, minY, minZ).color(r, g, b, a).normal(matrix3f, 1, 0, 0).endVertex();
+        buffer.vertex(matrix4f, x, maxY, minZ).color(r, g, b, a).normal(matrix3f, 1, 0, 0).endVertex();
+        buffer.vertex(matrix4f, x, maxY, maxZ).color(r, g, b, a).normal(matrix3f, 1, 0, 0).endVertex();
+        buffer.vertex(matrix4f, x, minY, maxZ).color(r, g, b, a).normal(matrix3f, 1, 0, 0).endVertex();
     }
 
-    public static void drawPlaneNegY(final double y, final double minX, final double maxX, final double minZ, final double maxZ, final VertexConsumer buffer) {
-        buffer.vertex(minX, y, minZ).endVertex();
-        buffer.vertex(maxX, y, minZ).endVertex();
-        buffer.vertex(maxX, y, maxZ).endVertex();
-        buffer.vertex(minX, y, maxZ).endVertex();
+    public static void drawPlaneNegY(PoseStack poseStack, final float y, final float minX, final float maxX,
+                                     final float minZ, final float maxZ, final VertexConsumer buffer,
+                                     int r, int g, int b, int a) {
+        Matrix4f matrix4f = poseStack.last().pose();
+        Matrix3f matrix3f = poseStack.last().normal();
+        buffer.vertex(matrix4f, minX, y, minZ).color(r, g, b, a).normal(matrix3f, 0, -1, 0).endVertex();
+        buffer.vertex(matrix4f, maxX, y, minZ).color(r, g, b, a).normal(matrix3f, 0, -1, 0).endVertex();
+        buffer.vertex(matrix4f, maxX, y, maxZ).color(r, g, b, a).normal(matrix3f, 0, -1, 0).endVertex();
+        buffer.vertex(matrix4f, minX, y, maxZ).color(r, g, b, a).normal(matrix3f, 0, -1, 0).endVertex();
     }
 
-    public static void drawPlanePosY(final double y, final double minX, final double maxX, final double minZ, final double maxZ, final VertexConsumer buffer) {
-        buffer.vertex(minX, y, minZ).endVertex();
-        buffer.vertex(minX, y, maxZ).endVertex();
-        buffer.vertex(maxX, y, maxZ).endVertex();
-        buffer.vertex(maxX, y, minZ).endVertex();
+    public static void drawPlanePosY(PoseStack poseStack, final float y, final float minX, final float maxX,
+                                     final float minZ, final float maxZ, final VertexConsumer buffer,
+                                     int r, int g, int b, int a) {
+        Matrix4f matrix4f = poseStack.last().pose();
+        Matrix3f matrix3f = poseStack.last().normal();
+        buffer.vertex(matrix4f, minX, y, minZ).color(r, g, b, a).normal(matrix3f, 0, 1, 0).endVertex();
+        buffer.vertex(matrix4f, minX, y, maxZ).color(r, g, b, a).normal(matrix3f, 0, 1, 0).endVertex();
+        buffer.vertex(matrix4f, maxX, y, maxZ).color(r, g, b, a).normal(matrix3f, 0, 1, 0).endVertex();
+        buffer.vertex(matrix4f, maxX, y, minZ).color(r, g, b, a).normal(matrix3f, 0, 1, 0).endVertex();
     }
 
-    public static void drawPlaneNegZ(final double z, final double minX, final double maxX, final double minY, final double maxY, final VertexConsumer buffer) {
-        buffer.vertex(minX, minY, z).endVertex();
-        buffer.vertex(minX, maxY, z).endVertex();
-        buffer.vertex(maxX, maxY, z).endVertex();
-        buffer.vertex(maxX, minY, z).endVertex();
+    public static void drawPlaneNegZ(PoseStack poseStack, final float z, final float minX, final float maxX,
+                                     final float minY, final float maxY, final VertexConsumer buffer,
+                                     int r, int g, int b, int a) {
+        Matrix4f matrix4f = poseStack.last().pose();
+        Matrix3f matrix3f = poseStack.last().normal();
+        buffer.vertex(matrix4f, minX, minY, z).color(r, g, b, a).normal(matrix3f, 0, 0, -1).endVertex();
+        buffer.vertex(matrix4f, minX, maxY, z).color(r, g, b, a).normal(matrix3f, 0, 0, -1).endVertex();
+        buffer.vertex(matrix4f, maxX, maxY, z).color(r, g, b, a).normal(matrix3f, 0, 0, -1).endVertex();
+        buffer.vertex(matrix4f, maxX, minY, z).color(r, g, b, a).normal(matrix3f, 0, 0, -1).endVertex();
     }
 
-    public static void drawPlanePosZ(final double z, final double minX, final double maxX, final double minY, final double maxY, final VertexConsumer buffer) {
-        buffer.vertex(minX, minY, z).endVertex();
-        buffer.vertex(maxX, minY, z).endVertex();
-        buffer.vertex(maxX, maxY, z).endVertex();
-        buffer.vertex(minX, maxY, z).endVertex();
+    public static void drawPlanePosZ(PoseStack poseStack, final float z, final float minX, final float maxX,
+                                     final float minY, final float maxY, final VertexConsumer buffer,
+                                     int r, int g, int b, int a) {
+        Matrix4f matrix4f = poseStack.last().pose();
+        Matrix3f matrix3f = poseStack.last().normal();
+        buffer.vertex(matrix4f, minX, minY, z).color(r, g, b, a).normal(matrix3f, 0, 0, 1).endVertex();
+        buffer.vertex(matrix4f, maxX, minY, z).color(r, g, b, a).normal(matrix3f, 0, 0, 1).endVertex();
+        buffer.vertex(matrix4f, maxX, maxY, z).color(r, g, b, a).normal(matrix3f, 0, 0, 1).endVertex();
+        buffer.vertex(matrix4f, minX, maxY, z).color(r, g, b, a).normal(matrix3f, 0, 0, 1).endVertex();
     }
 
-    public static void drawCapsuleCube(AABB boundingBox, BufferBuilder bufferBuilder) {
-        drawPlaneNegX(boundingBox.minX, boundingBox.minY, boundingBox.maxY, boundingBox.minZ, boundingBox.maxZ, bufferBuilder);
-        drawPlanePosX(boundingBox.maxX, boundingBox.minY, boundingBox.maxY, boundingBox.minZ, boundingBox.maxZ, bufferBuilder);
-        drawPlaneNegY(boundingBox.minY, boundingBox.minX, boundingBox.maxX, boundingBox.minZ, boundingBox.maxZ, bufferBuilder);
-        drawPlanePosY(boundingBox.maxY, boundingBox.minX, boundingBox.maxX, boundingBox.minZ, boundingBox.maxZ, bufferBuilder);
-        drawPlaneNegZ(boundingBox.minZ, boundingBox.minX, boundingBox.maxX, boundingBox.minY, boundingBox.maxY, bufferBuilder);
-        drawPlanePosZ(boundingBox.maxZ, boundingBox.minX, boundingBox.maxX, boundingBox.minY, boundingBox.maxY, bufferBuilder);
+    public static void drawCapsuleCube(PoseStack poseStack, AABB boundingBox, VertexConsumer bufferBuilder, int r, int g, int b, int a) {
+        drawPlaneNegX(poseStack, (float) boundingBox.minX, (float) boundingBox.minY, (float) boundingBox.maxY, (float) boundingBox.minZ, (float) boundingBox.maxZ, bufferBuilder, r, g, b, a);
+        drawPlanePosX(poseStack, (float) boundingBox.maxX, (float) boundingBox.minY, (float) boundingBox.maxY, (float) boundingBox.minZ, (float) boundingBox.maxZ, bufferBuilder, r, g, b, a);
+        drawPlaneNegY(poseStack, (float) boundingBox.minY, (float) boundingBox.minX, (float) boundingBox.maxX, (float) boundingBox.minZ, (float) boundingBox.maxZ, bufferBuilder, r, g, b, a);
+        drawPlanePosY(poseStack, (float) boundingBox.maxY, (float) boundingBox.minX, (float) boundingBox.maxX, (float) boundingBox.minZ, (float) boundingBox.maxZ, bufferBuilder, r, g, b, a);
+        drawPlaneNegZ(poseStack, (float) boundingBox.minZ, (float) boundingBox.minX, (float) boundingBox.maxX, (float) boundingBox.minY, (float) boundingBox.maxY, bufferBuilder, r, g, b, a);
+        drawPlanePosZ(poseStack, (float) boundingBox.maxZ, (float) boundingBox.minX, (float) boundingBox.maxX, (float) boundingBox.minY, (float) boundingBox.maxY, bufferBuilder, r, g, b, a);
     }
 
-    public static void setColor(final int rgb, final int alpha) {
+    public static float[] prevColor = new float[4];
+
+    public static void pushColor(final int rgb, final int alpha) {
+        prevColor = RenderSystem.getShaderColor();
         final int r = (rgb >> 16) & 0xFF;
         final int g = (rgb >> 8) & 0xFF;
         final int b = rgb & 0xFF;
@@ -119,7 +153,11 @@ public class RendererUtils {
         final float rf = r / 255f;
         final float gf = g / 255f;
         final float bf = b / 255f;
-
         RenderSystem.setShaderColor(rf, gf, bf, af);
+    }
+
+    public static void popColor() {
+        if (prevColor != null && prevColor.length == 4)
+            RenderSystem.setShaderColor(prevColor[0], prevColor[1], prevColor[2], prevColor[3]);
     }
 }
